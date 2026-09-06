@@ -10,6 +10,7 @@
     "import:tcgdex": "tsx scripts/import-tcgdex.ts"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.12.6",
     "@supabase/supabase-js": "^2.114.0",
     "dotenv": "^17.4.2",
     "next": "16.3.4",
