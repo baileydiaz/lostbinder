@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 
 type Card = {
@@ -7,57 +8,85 @@ type Card = {
   rarity: string | null
   illustrator: string | null
   image_url: string | null
+  set_id: string
 }
 
 export default async function Home() {
   const supabase = await createClient()
 
-  // Find Prismatic Evolutions
-  const { data: set, error: setError } = await supabase
-    .from('sets')
-    .select('*')
-    .ilike('name', 'Prismatic Evolutions')
-    .single()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  if (setError || !set) {
-    return (
-      <main style={{ padding: '40px' }}>
-        <h1>LostBinder</h1>
+  let cards: Card[] = []
+  let title = 'Prismatic Evolutions'
+  let subtitle = 'A few cards to explore'
 
-        <p>Could not find Prismatic Evolutions.</p>
+  if (user) {
+    const { data: favorites } = await supabase
+      .from('card_favorites')
+      .select(`
+        card_id,
+        cards (
+          id,
+          local_id,
+          name,
+          rarity,
+          illustrator,
+          image_url,
+          set_id
+        )
+      `)
+      .eq('user_id', user.id)
+      .order('created_at', {
+        ascending: false,
+      })
+      .limit(24)
 
-        {setError && (
-          <pre>{setError.message}</pre>
-        )}
-      </main>
-    )
+    cards =
+      favorites
+        ?.map((favorite: any) => favorite.cards)
+        .filter(Boolean) ?? []
+
+    title = 'Your Favorites'
+    subtitle =
+      cards.length > 0
+        ? `${cards.length} favorite cards`
+        : 'You have not favorited any cards yet'
   }
 
-  // Get every card in the set
-  const { data: cards, error: cardsError } = await supabase
-    .from('cards')
-    .select(`
-      id,
-      local_id,
-      name,
-      rarity,
-      illustrator,
-      image_url
-    `)
-    .eq('set_id', set.id)
-    .order('local_id')
+  if (!user || cards.length === 0) {
+    const { data: set } = await supabase
+      .from('sets')
+      .select('id')
+      .ilike('name', 'Prismatic Evolutions')
+      .single()
 
-  if (cardsError) {
-    return (
-      <main style={{ padding: '40px' }}>
-        <h1>LostBinder</h1>
-        <p>Could not load cards.</p>
-        <pre>{cardsError.message}</pre>
-      </main>
-    )
+    if (set) {
+      const { data: prismaticCards } = await supabase
+        .from('cards')
+        .select(`
+          id,
+          local_id,
+          name,
+          rarity,
+          illustrator,
+          image_url,
+          set_id
+        `)
+        .eq('set_id', set.id)
+        .not('image_url', 'is', null)
+        .limit(24)
+
+      cards = (prismaticCards ?? []) as Card[]
+    }
+
+    if (user) {
+      title = 'Start Your Favorites'
+      subtitle =
+        'Favorite cards you love and they will appear here'
+    }
   }
-
-  const typedCards = (cards ?? []) as Card[]
 
   return (
     <main
@@ -67,32 +96,38 @@ export default async function Home() {
         padding: '40px 24px',
       }}
     >
-      <h1
+      <div
         style={{
-          fontSize: '42px',
-          marginBottom: '5px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: '20px',
+          marginBottom: '32px',
         }}
       >
-        LostBinder
-      </h1>
+        <div>
+          <h1 style={{ margin: 0 }}>{title}</h1>
 
-      <h2
-        style={{
-          fontSize: '28px',
-          marginBottom: '5px',
-        }}
-      >
-        {set.name}
-      </h2>
+          <p
+            style={{
+              marginTop: '8px',
+              opacity: 0.7,
+            }}
+          >
+            {subtitle}
+          </p>
+        </div>
 
-      <p
-        style={{
-          marginBottom: '30px',
-          opacity: 0.7,
-        }}
-      >
-        {typedCards.length} cards
-      </p>
+        <Link
+          href="/sets"
+          style={{
+            textDecoration: 'none',
+            fontWeight: 600,
+          }}
+        >
+          Explore all sets →
+        </Link>
+      </div>
 
       <div
         style={{
@@ -102,50 +137,44 @@ export default async function Home() {
           gap: '24px',
         }}
       >
-        {typedCards.map((card) => (
-          <div key={card.id}>
-            {card.image_url ? (
+        {cards.map((card) => (
+          <Link
+            key={card.id}
+            href={`/sets/${card.set_id}`}
+            style={{
+              color: 'inherit',
+              textDecoration: 'none',
+            }}
+          >
+            {card.image_url && (
               <img
                 src={card.image_url}
                 alt={card.name}
                 style={{
                   width: '100%',
-                  borderRadius: '10px',
                   display: 'block',
+                  borderRadius: '12px',
                 }}
               />
-            ) : (
-              <div
-                style={{
-                  aspectRatio: '2.5 / 3.5',
-                  background: '#222',
-                  borderRadius: '10px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                No image
-              </div>
             )}
 
-            <div style={{ marginTop: '8px' }}>
-              <strong>
-                {card.local_id}. {card.name}
-              </strong>
+            <div style={{ marginTop: '10px' }}>
+              <strong>{card.name}</strong>
 
-              {card.rarity && (
-                <div
-                  style={{
-                    fontSize: '14px',
-                    opacity: 0.65,
-                  }}
-                >
-                  {card.rarity}
-                </div>
-              )}
+              <div
+                style={{
+                  fontSize: '14px',
+                  opacity: 0.65,
+                  marginTop: '3px',
+                }}
+              >
+                #{card.local_id}
+                {card.rarity
+                  ? ` • ${card.rarity}`
+                  : ''}
+              </div>
             </div>
-          </div>
+          </Link>
         ))}
       </div>
     </main>
