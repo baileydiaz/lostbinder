@@ -1,55 +1,30 @@
 'use client'
 
-import Link
-  from 'next/link'
-
-import {
-  useMemo,
-  useState,
-} from 'react'
-
+import Link from 'next/link'
+import { useEffect, useMemo, useState } from 'react'
 import ReactionButtons, {
-  Reaction,
+  type Reaction,
 } from '@/app/components/reaction-buttons'
 
 type Card = {
   id: string
   local_id: string
   name: string
-
-  rarity:
-    | string
-    | null
-
-  illustrator:
-    | string
-    | null
-
-  image_url:
-    | string
-    | null
-
+  rarity: string | null
+  illustrator: string | null
+  image_url: string | null
   set_id: string
-
-  category:
-    | string
-    | null
-
+  category: string | null
   set_name: string
 }
 
 type Props = {
   cards: Card[]
-
-  userId:
-    | string
-    | null
-
-  initialReactions:
-    Record<
-      string,
-      'like' | 'love'
-    >
+  userId: string | null
+  initialReactions: Record<
+    string,
+    'like' | 'love'
+  >
 }
 
 export default function ExploreCard({
@@ -57,106 +32,112 @@ export default function ExploreCard({
   userId,
   initialReactions,
 }: Props) {
-  const [
-    index,
-    setIndex,
-  ] =
-    useState(0)
+  const [index, setIndex] = useState(0)
 
-  const [
-    reactions,
-    setReactions,
-  ] =
-    useState<
-      Record<
-        string,
-        Reaction
-      >
-    >(
+  const [reactions, setReactions] =
+    useState<Record<string, Reaction>>(
       initialReactions
     )
 
-  const card =
-    cards[index]
-
-  const progress =
-    useMemo(
-      () => {
-        if (
-          cards.length === 0
-        ) {
-          return 0
-        }
-
-        return Math.min(
-          100,
-
-          (
-            (index + 1)
-            / cards.length
-          ) * 100
-        )
-      },
-
-      [
-        cards.length,
-        index,
-      ]
+  const [badCardIds, setBadCardIds] =
+    useState<Set<string>>(
+      new Set()
     )
 
-  function nextCard() {
-    setIndex(
-      (current) =>
-        Math.min(
-          current + 1,
-          cards.length
+  const visibleCards = useMemo(
+    () =>
+      cards.filter(
+        (card) =>
+          card.image_url &&
+          !badCardIds.has(card.id)
+      ),
+    [cards, badCardIds]
+  )
+
+  const card =
+    visibleCards[index]
+
+  const progress = useMemo(() => {
+    if (visibleCards.length === 0) {
+      return 0
+    }
+
+    return Math.min(
+      100,
+      ((index + 1) /
+        visibleCards.length) *
+        100
+    )
+  }, [
+    visibleCards.length,
+    index,
+  ])
+
+  useEffect(() => {
+    if (
+      index >=
+      visibleCards.length
+    ) {
+      setIndex(
+        Math.max(
+          0,
+          visibleCards.length - 1
         )
+      )
+    }
+  }, [
+    index,
+    visibleCards.length,
+  ])
+
+  function nextCard() {
+    setIndex((current) =>
+      Math.min(
+        current + 1,
+        visibleCards.length
+      )
     )
   }
 
   function previousCard() {
-    setIndex(
-      (current) =>
-        Math.max(
-          0,
-          current - 1
-        )
+    setIndex((current) =>
+      Math.max(
+        0,
+        current - 1
+      )
+    )
+  }
+
+  function removeBrokenCard(
+    cardId: string
+  ) {
+    setBadCardIds(
+      (current) => {
+        const next =
+          new Set(current)
+
+        next.add(cardId)
+
+        return next
+      }
     )
   }
 
   if (
-    cards.length === 0
+    visibleCards.length === 0
   ) {
     return (
       <div
         className="
-          rounded-3xl
-          border
-          border-white/10
-          bg-zinc-950
-          p-8
-          text-center
+          flex
+          min-h-[65vh]
+          w-full
+          items-center
+          justify-center
         "
       >
-        <p
-          className="
-            text-lg
-            font-medium
-          "
-        >
-          No cards loaded.
-        </p>
-
-        <p
-          className="
-            mt-2
-            text-sm
-            text-zinc-500
-          "
-        >
-          If this only happens
-          while signed in,
-          run the RLS SQL.
+        <p className="text-sm text-zinc-500">
+          No cards available.
         </p>
       </div>
     )
@@ -166,264 +147,191 @@ export default function ExploreCard({
     return (
       <div
         className="
-          rounded-3xl
-          border
-          border-white/10
-          bg-zinc-950
-          p-10
-          text-center
+          flex
+          min-h-[65vh]
+          w-full
+          items-center
+          justify-center
         "
       >
-        <div
-          className="
-            text-4xl
-          "
-        >
-          ✨
+        <div className="text-center">
+          <h2 className="text-2xl font-semibold">
+            You&apos;re all caught up.
+          </h2>
+
+          <p className="mt-2 text-zinc-500">
+            Refresh Explore for another batch.
+          </p>
         </div>
-
-        <h2
-          className="
-            mt-4
-            text-2xl
-            font-semibold
-          "
-        >
-          You made it
-          through this stack.
-        </h2>
-
-        <p
-          className="
-            mt-2
-            text-zinc-400
-          "
-        >
-          Refresh Explore
-          for another batch.
-        </p>
       </div>
     )
   }
 
   const currentReaction =
-    reactions[
-      card.id
-    ] ?? null
+    reactions[card.id] ?? null
 
   return (
-    <div>
+    <div
+      className="
+        flex
+        w-full
+        justify-center
+      "
+    >
       <div
         className="
-          mb-4
-          h-1
-          overflow-hidden
-          rounded-full
-          bg-zinc-900
+          w-full
+          max-w-[430px]
         "
       >
-        <div
-          className="
-            h-full
-            bg-white
-            transition-all
-          "
-          style={{
-            width:
-              `${progress}%`,
-          }}
-        />
-      </div>
-
-      <article
-        className="
-          overflow-hidden
-          rounded-[28px]
-          border
-          border-white/10
-          bg-zinc-950
-          shadow-2xl
-        "
-      >
-        <Link
-          href={
-            `/sets/${card.set_id}`
-          }
-          className="
-            block
-            bg-zinc-950
-            p-5
-          "
-        >
-          {
-            card.image_url
-            ? (
-              <img
-                src={
-                  card.image_url
-                }
-                alt={
-                  card.name
-                }
-                className="
-                  mx-auto
-                  max-h-[62vh]
-                  w-auto
-                  rounded-2xl
-                  object-contain
-                "
-              />
-            )
-            : (
-              <div
-                className="
-                  aspect-[2.5/3.5]
-                  rounded-2xl
-                  bg-zinc-900
-                "
-              />
-            )
-          }
-        </Link>
-
-        <div
-          className="
-            border-t
-            border-white/10
-            p-5
-          "
-        >
-          <p
-            className="
-              text-xs
-              uppercase
-              tracking-[0.18em]
-              text-zinc-500
-            "
-          >
-            {
-              card.set_name
-            }
-          </p>
-
-          <h2
-            className="
-              mt-2
-              text-2xl
-              font-semibold
-            "
-          >
-            {
-              card.name
-            }
-          </h2>
-
-          <p
-            className="
-              mt-2
-              text-sm
-              text-zinc-400
-            "
-          >
-            {
-              card.illustrator
-              ||
-              'Unknown artist'
-            }
-
-            {' · '}
-
-            {
-              card.rarity
-              ||
-              'Unknown rarity'
-            }
-          </p>
-
+        {/* Progress */}
+        <div className="mb-4">
           <div
             className="
-              mt-6
-              flex
-              items-center
-              justify-center
-              gap-3
+              h-1
+              overflow-hidden
+              rounded-full
+              bg-zinc-900
             "
           >
-            <button
-              type="button"
-              onClick={
-                previousCard
-              }
-              disabled={
-                index === 0
-              }
+            <div
               className="
-                h-14
-                rounded-full
-                border
-                border-white/15
-                px-5
-                text-sm
-                text-zinc-300
-                transition
-                hover:border-white/40
-                disabled:opacity-30
+                h-full
+                bg-white
+                transition-all
+                duration-300
               "
-            >
-              ← Back
-            </button>
-
-            <button
-              type="button"
-              onClick={
-                nextCard
-              }
-              className="
-                h-14
-                rounded-full
-                border
-                border-white/15
-                px-5
-                text-sm
-                text-zinc-300
-                transition
-                hover:border-white/40
-              "
-            >
-              ✕ Skip
-            </button>
+              style={{
+                width: `${progress}%`,
+              }}
+            />
           </div>
 
-          <div
+          <p
             className="
-              mt-3
-              flex
-              justify-center
+              mt-2
+              text-right
+              text-xs
+              text-zinc-600
             "
           >
-            <ReactionButtons
-              cardId={
-                card.id
-              }
+            {index + 1} /{' '}
+            {visibleCards.length}
+          </p>
+        </div>
 
-              userId={
-                userId
+        <article
+          className="
+            w-full
+            overflow-hidden
+            rounded-[28px]
+            border
+            border-white/10
+            bg-zinc-950
+            shadow-2xl
+          "
+        >
+          <Link
+            href={`/sets/${card.set_id}`}
+            className="
+              flex
+              min-h-[430px]
+              w-full
+              items-center
+              justify-center
+              bg-black
+              p-6
+            "
+          >
+            <img
+              src={card.image_url!}
+              alt={card.name}
+              onError={() =>
+                removeBrokenCard(
+                  card.id
+                )
               }
+              className="
+                mx-auto
+                block
+                max-h-[58vh]
+                max-w-full
+                object-contain
+              "
+            />
+          </Link>
 
-              initialReaction={
-                currentReaction
-              }
+          <div
+            className="
+              border-t
+              border-white/10
+              p-5
+              text-center
+            "
+          >
+            <p
+              className="
+                text-xs
+                font-medium
+                uppercase
+                tracking-[0.18em]
+                text-zinc-500
+              "
+            >
+              {card.set_name}
+            </p>
 
-              onSaved={
-                (
+            <h2
+              className="
+                mt-2
+                text-2xl
+                font-semibold
+              "
+            >
+              {card.name}
+            </h2>
+
+            <p
+              className="
+                mt-2
+                text-sm
+                text-zinc-400
+              "
+            >
+              {card.illustrator ||
+                'Unknown artist'}
+            </p>
+
+            <p
+              className="
+                mt-1
+                text-sm
+                text-zinc-500
+              "
+            >
+              {card.rarity ||
+                'Unknown rarity'}
+            </p>
+
+            <div
+              className="
+                mt-6
+                flex
+                justify-center
+              "
+            >
+              <ReactionButtons
+                cardId={card.id}
+                userId={userId}
+                initialReaction={
+                  currentReaction
+                }
+                onSaved={(
                   nextReaction
                 ) => {
                   setReactions(
-                    (
-                      current
-                    ) => ({
+                    (current) => ({
                       ...current,
-
                       [card.id]:
                         nextReaction,
                     })
@@ -437,34 +345,53 @@ export default function ExploreCard({
                       120
                     )
                   }
+                }}
+              />
+            </div>
+
+            <button
+              type="button"
+              onClick={nextCard}
+              className="
+                mt-4
+                w-full
+                rounded-full
+                border
+                border-white/10
+                px-5
+                py-3
+                text-sm
+                font-medium
+                text-zinc-400
+                transition
+                hover:border-white/30
+                hover:bg-white/5
+                hover:text-white
+              "
+            >
+              ✕ Don&apos;t Like
+            </button>
+
+            {index > 0 ? (
+              <button
+                type="button"
+                onClick={
+                  previousCard
                 }
-              }
-            />
+                className="
+                  mt-3
+                  text-xs
+                  text-zinc-600
+                  transition
+                  hover:text-zinc-300
+                "
+              >
+                ← Previous card
+              </button>
+            ) : null}
           </div>
-
-          <div
-            className="
-              mt-4
-              grid
-              grid-cols-2
-              gap-2
-              text-center
-              text-xs
-              text-zinc-500
-            "
-          >
-            <span>
-              👍 Like =
-              algorithm
-            </span>
-
-            <span>
-              ♥ Love =
-              collection + algorithm
-            </span>
-          </div>
-        </div>
-      </article>
+        </article>
+      </div>
     </div>
   )
 }

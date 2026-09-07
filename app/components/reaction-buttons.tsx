@@ -14,7 +14,6 @@ type Props = {
   userId: string | null
   initialReaction?: Reaction
   compact?: boolean
-
   onSaved?: (
     reaction: Reaction
   ) => void
@@ -35,9 +34,12 @@ export default function ReactionButtons({
   const [saving, setSaving] =
     useState(false)
 
+  const [error, setError] =
+    useState('')
+
   const router = useRouter()
 
-  async function setCardReaction(
+  async function saveReaction(
     next: 'like' | 'love'
   ) {
     if (!userId) {
@@ -50,44 +52,111 @@ export default function ReactionButtons({
     }
 
     setSaving(true)
+    setError('')
 
-    const supabase = createClient()
+    const supabase =
+      createClient()
 
-    // Clicking the same reaction again removes it.
+    /*
+     * Clicking the currently selected
+     * reaction removes it.
+     */
     if (reaction === next) {
-      const { error } =
-        await supabase
-          .from('card_reactions')
+      const {
+        error: reactionDeleteError,
+      } = await supabase
+        .from('card_reactions')
+        .delete()
+        .eq('user_id', userId)
+        .eq('card_id', cardId)
+
+      if (reactionDeleteError) {
+        setError(
+          reactionDeleteError.message
+        )
+
+        setSaving(false)
+        return
+      }
+
+      /*
+       * If removing Love,
+       * also remove from collection.
+       */
+      if (next === 'love') {
+        const {
+          error: favoriteDeleteError,
+        } = await supabase
+          .from('card_favorites')
           .delete()
-          .eq(
-            'user_id',
-            userId
-          )
-          .eq(
-            'card_id',
-            cardId
+          .eq('user_id', userId)
+          .eq('card_id', cardId)
+
+        if (favoriteDeleteError) {
+          setError(
+            favoriteDeleteError.message
           )
 
-      if (!error) {
-        setReaction(null)
-        onSaved?.(null)
+          setSaving(false)
+          return
+        }
       }
+
+      setReaction(null)
+
+      onSaved?.(null)
+
+      router.refresh()
+
+      setSaving(false)
+
+      return
+    }
+
+    /*
+     * Save Like or Love as
+     * the user's reaction.
+     */
+    const {
+      error: reactionError,
+    } = await supabase
+      .from('card_reactions')
+      .upsert(
+        {
+          user_id: userId,
+          card_id: cardId,
+          reaction: next,
+          updated_at:
+            new Date().toISOString(),
+        },
+        {
+          onConflict:
+            'user_id,card_id',
+        }
+      )
+
+    if (reactionError) {
+      setError(
+        reactionError.message
+      )
 
       setSaving(false)
       return
     }
 
-    const { error } =
-      await supabase
-        .from('card_reactions')
+    /*
+     * Love means Favorite,
+     * so add it to collection.
+     */
+    if (next === 'love') {
+      const {
+        error: favoriteError,
+      } = await supabase
+        .from('card_favorites')
         .upsert(
           {
             user_id: userId,
             card_id: cardId,
-            reaction: next,
-            updated_at:
-              new Date()
-                .toISOString(),
           },
           {
             onConflict:
@@ -95,112 +164,104 @@ export default function ReactionButtons({
           }
         )
 
-    if (!error) {
-      setReaction(next)
-      onSaved?.(next)
+      if (favoriteError) {
+        setError(
+          favoriteError.message
+        )
+
+        setSaving(false)
+        return
+      }
     }
+
+    /*
+     * Switching from Love to Like
+     * should remove it from collection.
+     */
+    if (
+      next === 'like' &&
+      reaction === 'love'
+    ) {
+      const {
+        error: favoriteDeleteError,
+      } = await supabase
+        .from('card_favorites')
+        .delete()
+        .eq('user_id', userId)
+        .eq('card_id', cardId)
+
+      if (favoriteDeleteError) {
+        setError(
+          favoriteDeleteError.message
+        )
+
+        setSaving(false)
+        return
+      }
+    }
+
+    setReaction(next)
+
+    onSaved?.(next)
+
+    router.refresh()
 
     setSaving(false)
   }
 
-  const base = `
-    inline-flex
-    items-center
-    justify-center
-    rounded-full
-    border
-    font-medium
-    transition
-    active:scale-95
-    disabled:opacity-50
-  `
-
-  const size =
-    compact
-      ? 'h-10 px-3 text-sm'
-      : 'h-14 px-5 text-base'
-
   return (
-    <div
-      className="
-        flex
-        items-center
-        gap-2
-      "
-    >
-      <button
-        type="button"
-        disabled={saving}
-        onClick={() =>
-          setCardReaction(
-            'like'
-          )
+    <div>
+      <div
+        className={
+          compact
+            ? 'flex gap-2'
+            : 'flex justify-center gap-3'
         }
-        aria-pressed={
-          reaction === 'like'
-        }
-        title="Like — recommendation signal"
-        className={[
-          base,
-          size,
-
-          reaction === 'like'
-            ? `
-              border-white
-              bg-white
-              text-black
-            `
-            : `
-              border-white/20
-              bg-zinc-950
-              text-white
-              hover:border-white/50
-            `,
-        ].join(' ')}
       >
-        <span className="mr-1.5">
-          👍
-        </span>
+        <button
+          type="button"
+          disabled={saving}
+          onClick={() =>
+            saveReaction('like')
+          }
+          className={
+            reaction === 'like'
+              ? compact
+                ? 'rounded-full bg-white px-3 py-2 text-xs font-semibold text-black'
+                : 'rounded-full bg-white px-6 py-3 font-semibold text-black'
+              : compact
+                ? 'rounded-full border border-white/15 px-3 py-2 text-xs text-zinc-400'
+                : 'rounded-full border border-white/15 px-6 py-3 text-zinc-300 transition hover:border-white/40'
+          }
+        >
+          👍 Like
+        </button>
 
-        {!compact && 'Like'}
-      </button>
+        <button
+          type="button"
+          disabled={saving}
+          onClick={() =>
+            saveReaction('love')
+          }
+          className={
+            reaction === 'love'
+              ? compact
+                ? 'rounded-full bg-white px-3 py-2 text-xs font-semibold text-black'
+                : 'rounded-full bg-white px-6 py-3 font-semibold text-black'
+              : compact
+                ? 'rounded-full border border-white/15 px-3 py-2 text-xs text-zinc-400'
+                : 'rounded-full border border-white/15 px-6 py-3 text-zinc-300 transition hover:border-white/40'
+          }
+        >
+          ♥ Love
+        </button>
+      </div>
 
-      <button
-        type="button"
-        disabled={saving}
-        onClick={() =>
-          setCardReaction(
-            'love'
-          )
-        }
-        aria-pressed={
-          reaction === 'love'
-        }
-        title="Love — collection + recommendation signal"
-        className={[
-          base,
-          size,
-
-          reaction === 'love'
-            ? `
-              border-red-500
-              bg-red-500
-              text-white
-            `
-            : `
-              border-white/20
-              bg-zinc-950
-              text-white
-              hover:border-red-400/70
-            `,
-        ].join(' ')}
-      >
-        <span className="mr-1.5">
-          ♥
-        </span>
-
-        {!compact && 'Love'}
-      </button>
+      {error ? (
+        <p className="mt-2 text-center text-xs text-red-400">
+          {error}
+        </p>
+      ) : null}
     </div>
   )
 }
