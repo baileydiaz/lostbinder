@@ -2,7 +2,6 @@
 
 import Link from 'next/link'
 import {
-  useEffect,
   useMemo,
   useState,
 } from 'react'
@@ -47,9 +46,6 @@ export default function ExploreCard({
   const [badCardIds, setBadCardIds] =
     useState<Set<string>>(new Set())
 
-  const [imageLoaded, setImageLoaded] =
-    useState(false)
-
   const visibleCards = useMemo(
     () =>
       cards.filter(
@@ -62,21 +58,18 @@ export default function ExploreCard({
 
   const card = visibleCards[index]
 
-  useEffect(() => {
-    setImageLoaded(false)
-  }, [card?.id])
-
-  useEffect(() => {
-    if (
-      index >= visibleCards.length &&
-      visibleCards.length > 0
-    ) {
-      setIndex(visibleCards.length - 1)
-    }
-  }, [index, visibleCards.length])
-
   function nextCard() {
-    setIndex((current) => current + 1)
+    setIndex((current) => {
+      const next = current + 1
+
+      if (
+        next >= visibleCards.length
+      ) {
+        return visibleCards.length
+      }
+
+      return next
+    })
   }
 
   function previousCard() {
@@ -85,7 +78,7 @@ export default function ExploreCard({
     )
   }
 
-  function killBrokenCard(
+  function removeBrokenCard(
     cardId: string
   ) {
     setBadCardIds((current) => {
@@ -152,26 +145,16 @@ export default function ExploreCard({
         <div className="overflow-hidden rounded-[28px] border border-white/10 bg-zinc-950 shadow-2xl">
           <Link
             href={`/cards/${card.id}`}
-            className="relative flex aspect-[2.5/3.5] w-full items-center justify-center overflow-hidden bg-zinc-950"
+            className="flex aspect-[2.5/3.5] w-full items-center justify-center overflow-hidden bg-zinc-950"
           >
-            {!imageLoaded ? (
-              <div className="absolute inset-0 animate-pulse bg-zinc-900" />
-            ) : null}
-
             <img
+              key={card.id}
               src={card.image_url!}
               alt={card.name}
-              onLoad={() =>
-                setImageLoaded(true)
-              }
               onError={() =>
-                killBrokenCard(card.id)
+                removeBrokenCard(card.id)
               }
-              className={`h-full w-full object-contain transition-opacity duration-200 ${
-                imageLoaded
-                  ? 'opacity-100'
-                  : 'opacity-0'
-              }`}
+              className="h-full w-full object-contain"
             />
           </Link>
 
@@ -187,6 +170,7 @@ export default function ExploreCard({
             <p className="mt-1 truncate text-xs text-zinc-500">
               {card.rarity ||
                 'Pokémon card'}
+
               {card.illustrator
                 ? ` · ${card.illustrator}`
                 : ''}
