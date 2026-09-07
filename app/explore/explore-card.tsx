@@ -1,7 +1,12 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useMemo, useState } from 'react'
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from 'react'
+
 import ReactionButtons, {
   type Reaction,
 } from '@/app/components/reaction-buttons'
@@ -32,57 +37,74 @@ export default function ExploreCard({
   userId,
   initialReactions,
 }: Props) {
-  const [index, setIndex] = useState(0)
+  const [
+    index,
+    setIndex,
+  ] = useState(0)
 
-  const [reactions, setReactions] =
-    useState<Record<string, Reaction>>(
+  const [
+    reactions,
+    setReactions,
+  ] =
+    useState<
+      Record<
+        string,
+        Reaction
+      >
+    >(
       initialReactions
     )
 
-  const [badCardIds, setBadCardIds] =
-    useState<Set<string>>(
+  const [
+    badCardIds,
+    setBadCardIds,
+  ] =
+    useState<
+      Set<string>
+    >(
       new Set()
     )
 
-  const visibleCards = useMemo(
-    () =>
-      cards.filter(
-        (card) =>
-          card.image_url &&
-          !badCardIds.has(card.id)
-      ),
-    [cards, badCardIds]
-  )
+  const [
+    imageLoaded,
+    setImageLoaded,
+  ] =
+    useState(false)
+
+  const visibleCards =
+    useMemo(
+      () =>
+        cards.filter(
+          (card) =>
+            Boolean(
+              card.image_url
+            ) &&
+            !badCardIds.has(
+              card.id
+            )
+        ),
+      [
+        cards,
+        badCardIds,
+      ]
+    )
 
   const card =
     visibleCards[index]
 
-  const progress = useMemo(() => {
-    if (visibleCards.length === 0) {
-      return 0
-    }
-
-    return Math.min(
-      100,
-      ((index + 1) /
-        visibleCards.length) *
-        100
-    )
-  }, [
-    visibleCards.length,
-    index,
-  ])
+  useEffect(() => {
+    setImageLoaded(false)
+  }, [card?.id])
 
   useEffect(() => {
     if (
       index >=
-      visibleCards.length
+      visibleCards.length &&
+      visibleCards.length > 0
     ) {
       setIndex(
-        Math.max(
-          0,
-          visibleCards.length - 1
-        )
+        visibleCards.length -
+          1
       )
     }
   }, [
@@ -91,30 +113,31 @@ export default function ExploreCard({
   ])
 
   function nextCard() {
-    setIndex((current) =>
-      Math.min(
-        current + 1,
-        visibleCards.length
-      )
+    setIndex(
+      (current) =>
+        current + 1
     )
   }
 
   function previousCard() {
-    setIndex((current) =>
-      Math.max(
-        0,
-        current - 1
-      )
+    setIndex(
+      (current) =>
+        Math.max(
+          0,
+          current - 1
+        )
     )
   }
 
-  function removeBrokenCard(
+  function killBrokenCard(
     cardId: string
   ) {
     setBadCardIds(
       (current) => {
         const next =
-          new Set(current)
+          new Set(
+            current
+          )
 
         next.add(cardId)
 
@@ -123,274 +146,296 @@ export default function ExploreCard({
     )
   }
 
+  const progress =
+    visibleCards.length
+      ? Math.min(
+          100,
+          ((index + 1) /
+            visibleCards.length) *
+            100
+        )
+      : 0
+
   if (
-    visibleCards.length === 0
+    visibleCards.length ===
+    0
   ) {
     return (
-      <div
-        className="
-          flex
-          min-h-[65vh]
-          w-full
-          items-center
-          justify-center
-        "
-      >
-        <p className="text-sm text-zinc-500">
-          No cards available.
-        </p>
-      </div>
+      <p className="text-sm text-zinc-500">
+        No cards available.
+      </p>
     )
   }
 
   if (!card) {
     return (
-      <div
-        className="
-          flex
-          min-h-[65vh]
-          w-full
-          items-center
-          justify-center
-        "
-      >
-        <div className="text-center">
-          <h2 className="text-2xl font-semibold">
-            You&apos;re all caught up.
-          </h2>
+      <div className="text-center">
+        <h2 className="text-2xl font-semibold">
+          You&apos;re caught up.
+        </h2>
 
-          <p className="mt-2 text-zinc-500">
-            Refresh Explore for another batch.
-          </p>
-        </div>
+        <p className="mt-2 text-sm text-zinc-500">
+          Refresh for another
+          stack.
+        </p>
       </div>
     )
   }
 
   const currentReaction =
-    reactions[card.id] ?? null
+    reactions[card.id] ??
+    null
 
   return (
     <div
       className="
-        flex
         w-full
-        justify-center
+        max-w-[380px]
       "
     >
       <div
         className="
-          w-full
-          max-w-[430px]
+          mb-3
+          flex
+          items-center
+          gap-3
         "
       >
-        {/* Progress */}
-        <div className="mb-4">
+        <div
+          className="
+            h-[3px]
+            flex-1
+            overflow-hidden
+            rounded-full
+            bg-zinc-900
+          "
+        >
           <div
             className="
-              h-1
-              overflow-hidden
-              rounded-full
-              bg-zinc-900
+              h-full
+              bg-white
+              transition-all
+              duration-300
             "
-          >
+            style={{
+              width:
+                `${progress}%`,
+            }}
+          />
+        </div>
+
+        <span
+          className="
+            text-[11px]
+            text-zinc-600
+          "
+        >
+          {index + 1}
+          /
+          {
+            visibleCards.length
+          }
+        </span>
+      </div>
+
+      <div
+        className="
+          overflow-hidden
+          rounded-[26px]
+          border
+          border-white/10
+          bg-zinc-950
+          shadow-2xl
+        "
+      >
+        <Link
+          href={
+            `/cards/${card.id}`
+          }
+          className="
+            relative
+            flex
+            aspect-[2.5/3.5]
+            w-full
+            items-center
+            justify-center
+            overflow-hidden
+            bg-zinc-950
+          "
+        >
+          {!imageLoaded ? (
             <div
               className="
-                h-full
-                bg-white
-                transition-all
-                duration-300
+                absolute
+                inset-0
+                animate-pulse
+                bg-zinc-900
               "
-              style={{
-                width: `${progress}%`,
+            />
+          ) : null}
+
+          <img
+            src={
+              card.image_url!
+            }
+            alt={card.name}
+            onLoad={() =>
+              setImageLoaded(
+                true
+              )
+            }
+            onError={() =>
+              killBrokenCard(
+                card.id
+              )
+            }
+            className={`
+              h-full
+              w-full
+              object-contain
+              transition-opacity
+              duration-200
+              ${
+                imageLoaded
+                  ? 'opacity-100'
+                  : 'opacity-0'
+              }
+            `}
+          />
+        </Link>
+
+        <div className="p-4">
+          <p
+            className="
+              truncate
+              text-xs
+              text-zinc-500
+            "
+          >
+            {card.set_name}
+          </p>
+
+          <div
+            className="
+              mt-1
+              flex
+              items-start
+              justify-between
+              gap-3
+            "
+          >
+            <div className="min-w-0">
+              <h2
+                className="
+                  truncate
+                  text-xl
+                  font-semibold
+                "
+              >
+                {card.name}
+              </h2>
+
+              <p
+                className="
+                  mt-1
+                  truncate
+                  text-xs
+                  text-zinc-500
+                "
+              >
+                {card.rarity ||
+                  'Pokémon card'}
+
+                {card.illustrator
+                  ? ` · ${card.illustrator}`
+                  : ''}
+              </p>
+            </div>
+          </div>
+
+          <div
+            className="
+              mt-4
+              flex
+              justify-center
+            "
+          >
+            <ReactionButtons
+              cardId={
+                card.id
+              }
+              userId={
+                userId
+              }
+              initialReaction={
+                currentReaction
+              }
+              onSaved={(
+                nextReaction
+              ) => {
+                setReactions(
+                  (
+                    current
+                  ) => ({
+                    ...current,
+                    [card.id]:
+                      nextReaction,
+                  })
+                )
+
+                if (
+                  nextReaction
+                ) {
+                  setTimeout(
+                    nextCard,
+                    100
+                  )
+                }
               }}
             />
           </div>
 
-          <p
+          <button
+            type="button"
+            onClick={
+              nextCard
+            }
             className="
-              mt-2
-              text-right
-              text-xs
-              text-zinc-600
-            "
-          >
-            {index + 1} /{' '}
-            {visibleCards.length}
-          </p>
-        </div>
-
-        <article
-          className="
-            w-full
-            overflow-hidden
-            rounded-[28px]
-            border
-            border-white/10
-            bg-zinc-950
-            shadow-2xl
-          "
-        >
-          <Link
-            href={`/sets/${card.set_id}`}
-            className="
-              flex
-              min-h-[430px]
+              mt-3
               w-full
-              items-center
-              justify-center
-              bg-black
-              p-6
-            "
-          >
-            <img
-              src={card.image_url!}
-              alt={card.name}
-              onError={() =>
-                removeBrokenCard(
-                  card.id
-                )
-              }
-              className="
-                mx-auto
-                block
-                max-h-[58vh]
-                max-w-full
-                object-contain
-              "
-            />
-          </Link>
-
-          <div
-            className="
-              border-t
+              rounded-full
+              border
               border-white/10
-              p-5
-              text-center
+              py-2.5
+              text-sm
+              text-zinc-500
+              transition
+              hover:border-white/25
+              hover:text-white
             "
           >
-            <p
-              className="
-                text-xs
-                font-medium
-                uppercase
-                tracking-[0.18em]
-                text-zinc-500
-              "
-            >
-              {card.set_name}
-            </p>
+            ✕ Don&apos;t Like
+          </button>
 
-            <h2
-              className="
-                mt-2
-                text-2xl
-                font-semibold
-              "
-            >
-              {card.name}
-            </h2>
-
-            <p
-              className="
-                mt-2
-                text-sm
-                text-zinc-400
-              "
-            >
-              {card.illustrator ||
-                'Unknown artist'}
-            </p>
-
-            <p
-              className="
-                mt-1
-                text-sm
-                text-zinc-500
-              "
-            >
-              {card.rarity ||
-                'Unknown rarity'}
-            </p>
-
-            <div
-              className="
-                mt-6
-                flex
-                justify-center
-              "
-            >
-              <ReactionButtons
-                cardId={card.id}
-                userId={userId}
-                initialReaction={
-                  currentReaction
-                }
-                onSaved={(
-                  nextReaction
-                ) => {
-                  setReactions(
-                    (current) => ({
-                      ...current,
-                      [card.id]:
-                        nextReaction,
-                    })
-                  )
-
-                  if (
-                    nextReaction
-                  ) {
-                    setTimeout(
-                      nextCard,
-                      120
-                    )
-                  }
-                }}
-              />
-            </div>
-
+          {index > 0 ? (
             <button
               type="button"
-              onClick={nextCard}
+              onClick={
+                previousCard
+              }
               className="
-                mt-4
+                mt-3
                 w-full
-                rounded-full
-                border
-                border-white/10
-                px-5
-                py-3
-                text-sm
-                font-medium
-                text-zinc-400
-                transition
-                hover:border-white/30
-                hover:bg-white/5
-                hover:text-white
+                text-center
+                text-xs
+                text-zinc-700
+                hover:text-zinc-400
               "
             >
-              ✕ Don&apos;t Like
+              ← Previous
             </button>
-
-            {index > 0 ? (
-              <button
-                type="button"
-                onClick={
-                  previousCard
-                }
-                className="
-                  mt-3
-                  text-xs
-                  text-zinc-600
-                  transition
-                  hover:text-zinc-300
-                "
-              >
-                ← Previous card
-              </button>
-            ) : null}
-          </div>
-        </article>
+          ) : null}
+        </div>
       </div>
     </div>
   )

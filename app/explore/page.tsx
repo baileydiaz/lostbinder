@@ -1,3 +1,5 @@
+import Link from 'next/link'
+
 import {
   createClient,
 } from '@/lib/supabase/server'
@@ -21,28 +23,28 @@ type SetRow = {
   name: string
 }
 
-type ExploreCardType = CardRecord & {
-  set_name: string
-}
+type ExploreCardType =
+  CardRecord & {
+    set_name: string
+  }
 
 function shuffle<T>(
   items: T[]
 ) {
-  const result =
-    [...items]
+  const result = [
+    ...items,
+  ]
 
   for (
     let i =
       result.length - 1;
-
     i > 0;
-
     i--
   ) {
     const j =
       Math.floor(
-        Math.random()
-          * (i + 1)
+        Math.random() *
+          (i + 1)
       )
 
     ;[
@@ -62,54 +64,46 @@ export default async function ExplorePage() {
     await createClient()
 
   const {
-    data: {
-      user,
-    },
+    data: { user },
   } =
-    await supabase
-      .auth
-      .getUser()
+    await supabase.auth.getUser()
 
   const {
     data: cardsData,
     error: cardsError,
-  } =
-    await supabase
-      .from('cards')
-      .select(`
-        id,
-        local_id,
-        name,
-        rarity,
-        illustrator,
-        image_url,
-        set_id,
-        category
-      `)
-      .not(
-        'image_url',
-        'is',
-        null
-      )
-      .limit(180)
+  } = await supabase
+    .from('cards')
+    .select(`
+      id,
+      local_id,
+      name,
+      rarity,
+      illustrator,
+      image_url,
+      set_id,
+      category
+    `)
+    .not(
+      'image_url',
+      'is',
+      null
+    )
+    .limit(200)
 
   if (cardsError) {
     return (
       <main
         className="
+          flex
           min-h-screen
+          items-center
+          justify-center
           bg-black
           px-6
-          py-16
           text-white
         "
       >
-        <div
-          className="
-            mx-auto
-            max-w-xl
-          "
-        >
+        <div className="text-center">
           <h1
             className="
               text-3xl
@@ -125,11 +119,10 @@ export default async function ExplorePage() {
               text-red-400
             "
           >
-            Could not load cards:
-            {' '}
+            Could not load
+            cards:{' '}
             {
-              cardsError
-                .message
+              cardsError.message
             }
           </p>
         </div>
@@ -137,7 +130,9 @@ export default async function ExplorePage() {
     )
   }
 
-  const cards = (cardsData ?? []) as CardRecord[]
+  const cards =
+    (cardsData ??
+      []) as CardRecord[]
 
   const setIds =
     Array.from(
@@ -156,19 +151,29 @@ export default async function ExplorePage() {
     setIds.length > 0
   ) {
     const {
-      data,
-    } =
-      await supabase
-        .from('sets')
-        .select(
-          'id, name'
-        )
-        .in(
-          'id',
-          setIds
-        )
+      data: setsData,
+      error: setsError,
+    } = await supabase
+      .from('sets')
+      .select(`
+        id,
+        name
+      `)
+      .in(
+        'id',
+        setIds
+      )
 
-      sets = (data ?? []) as SetRow[]
+    if (setsError) {
+      console.error(
+        'Could not load sets:',
+        setsError.message
+      )
+    }
+
+    sets =
+      (setsData ??
+        []) as SetRow[]
   }
 
   const setNameById =
@@ -188,13 +193,10 @@ export default async function ExplorePage() {
         .map(
           (card) => ({
             ...card,
-
             set_name:
-              setNameById
-                .get(
-                  card.set_id
-                )
-              ??
+              setNameById.get(
+                card.set_id
+              ) ??
               card.set_id,
           })
         )
@@ -206,45 +208,57 @@ export default async function ExplorePage() {
     > = {}
 
   if (
-    user
-    &&
-    exploreCards.length > 0
+    user &&
+    exploreCards.length >
+      0
   ) {
-    const ids =
+    const cardIds =
       exploreCards.map(
         (card) =>
           card.id
       )
 
     const {
-      data: reactions,
-    } =
-      await supabase
-        .from(
-          'card_reactions'
-        )
-        .select(
-          'card_id, reaction'
-        )
-        .eq(
-          'user_id',
-          user.id
-        )
-        .in(
-          'card_id',
-          ids
-        )
+      data:
+        reactionData,
+      error:
+        reactionError,
+    } = await supabase
+      .from(
+        'card_reactions'
+      )
+      .select(`
+        card_id,
+        reaction
+      `)
+      .eq(
+        'user_id',
+        user.id
+      )
+      .in(
+        'card_id',
+        cardIds
+      )
+
+    if (
+      reactionError
+    ) {
+      console.error(
+        'Could not load reactions:',
+        reactionError.message
+      )
+    }
 
     for (
-      const row
-      of reactions ?? []
+      const row of
+        reactionData ??
+        []
     ) {
       if (
-        row.reaction
-          === 'like'
-        ||
-        row.reaction
-          === 'love'
+        row.reaction ===
+          'like' ||
+        row.reaction ===
+          'love'
       ) {
         initialReactions[
           row.card_id
@@ -259,73 +273,107 @@ export default async function ExplorePage() {
       className="
         min-h-screen
         bg-black
-        px-4
-        py-8
         text-white
-        sm:px-6
       "
     >
       <div
         className="
           mx-auto
-          max-w-lg
+          flex
+          min-h-screen
+          max-w-7xl
+          flex-col
+          px-4
+          sm:px-6
         "
       >
-        <div
+        <header
           className="
-            mb-6
+            flex
+            h-16
+            shrink-0
+            items-center
+            justify-between
           "
         >
-          <p
+          <Link
+            href="/"
             className="
-              text-xs
+              text-lg
               font-semibold
-              uppercase
-              tracking-[0.28em]
-              text-zinc-500
+              tracking-tight
             "
           >
             LostBinder
-          </p>
+          </Link>
 
-          <h1
+          <nav
             className="
-              mt-2
-              text-3xl
-              font-semibold
-            "
-          >
-            Explore
-          </h1>
-
-          <p
-            className="
-              mt-2
+              flex
+              items-center
+              gap-5
               text-sm
-              text-zinc-400
+              text-zinc-500
             "
           >
-            Like trains your taste.
-            Love adds a card to your
-            collection and counts
-            even more.
-          </p>
-        </div>
+            {user ? (
+              <>
+                <Link
+                  href="/collection"
+                  className="
+                    transition
+                    hover:text-white
+                  "
+                >
+                  Collection
+                </Link>
 
-        <ExploreCard
-          cards={
-            exploreCards
-          }
+                <Link
+                  href="/friends"
+                  className="
+                    transition
+                    hover:text-white
+                  "
+                >
+                  Friends
+                </Link>
+              </>
+            ) : (
+              <Link
+                href="/login"
+                className="
+                  transition
+                  hover:text-white
+                "
+              >
+                Sign in
+              </Link>
+            )}
+          </nav>
+        </header>
 
-          userId={
-            user?.id
-            ?? null
-          }
-
-          initialReactions={
-            initialReactions
-          }
-        />
+        <section
+          className="
+            flex
+            flex-1
+            items-center
+            justify-center
+            pb-8
+          "
+        >
+          <ExploreCard
+            cards={
+              exploreCards
+            }
+            userId={
+              user?.id ??
+              null
+            }
+            initialReactions={
+              initialReactions
+            }
+          />
+        </section>
       </div>
     </main>
   )

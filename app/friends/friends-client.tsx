@@ -1,14 +1,19 @@
 'use client'
 
 import Link from 'next/link'
-import { useState, type FormEvent } from 'react'
+import {
+  useState,
+  type FormEvent,
+} from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+
+import {
+  createClient,
+} from '@/lib/supabase/client'
 
 type Profile = {
   id: string
   username: string | null
-  display_name: string | null
   avatar_url: string | null
 }
 
@@ -24,11 +29,12 @@ type Props = {
   outgoing: FriendItem[]
 }
 
-function nameFor(profile: Profile) {
+function usernameFor(
+  profile: Profile
+) {
   return (
-    profile.display_name ||
     profile.username ||
-    'Collector'
+    'collector'
   )
 }
 
@@ -38,99 +44,187 @@ export default function FriendsClient({
   incoming,
   outgoing,
 }: Props) {
-  const [query, setQuery] = useState('')
-  const [results, setResults] = useState<Profile[]>([])
-  const [searching, setSearching] = useState(false)
-  const [message, setMessage] = useState('')
+  const [
+    username,
+    setUsername,
+  ] = useState('')
 
-  const router = useRouter()
+  const [
+    results,
+    setResults,
+  ] = useState<Profile[]>([])
 
-  async function searchPeople(
+  const [
+    searching,
+    setSearching,
+  ] = useState(false)
+
+  const [
+    message,
+    setMessage,
+  ] = useState('')
+
+  const router =
+    useRouter()
+
+  async function searchByUsername(
     event: FormEvent<HTMLFormElement>
   ) {
     event.preventDefault()
 
-    const clean = query.trim()
+    const cleanUsername =
+      username
+        .trim()
+        .replace(/^@/, '')
+        .toLowerCase()
 
-    if (clean.length < 2) {
-      setMessage('Type at least 2 characters.')
+    if (
+      cleanUsername.length < 2
+    ) {
+      setMessage(
+        'Enter a username.'
+      )
+
       return
     }
 
     setSearching(true)
     setMessage('')
+    setResults([])
 
-    const supabase = createClient()
+    const supabase =
+      createClient()
 
-    const { data, error } = await supabase
+    const {
+      data,
+      error,
+    } = await supabase
       .from('profiles')
       .select(`
         id,
         username,
-        display_name,
         avatar_url
       `)
-      .neq('id', currentUserId)
-      .or(
-        `username.ilike.%${clean}%,display_name.ilike.%${clean}%`
+      .neq(
+        'id',
+        currentUserId
       )
-      .limit(12)
+      .ilike(
+        'username',
+        cleanUsername
+      )
+      .limit(10)
 
     if (error) {
-      setMessage(error.message)
-      setResults([])
-    } else {
-      setResults((data ?? []) as Profile[])
+      setMessage(
+        error.message
+      )
+
+      setSearching(false)
+      return
+    }
+
+    const foundProfiles =
+      (data ?? []) as Profile[]
+
+    setResults(
+      foundProfiles
+    )
+
+    if (
+      foundProfiles.length ===
+      0
+    ) {
+      setMessage(
+        'No collector found with that username.'
+      )
     }
 
     setSearching(false)
   }
 
-  async function sendRequest(profileId: string) {
-    const supabase = createClient()
+  async function sendRequest(
+    profileId: string
+  ) {
+    const supabase =
+      createClient()
 
-    const { error } = await supabase
+    setMessage('')
+
+    const {
+      error,
+    } = await supabase
       .from('friendships')
       .insert({
-        requester_id: currentUserId,
-        addressee_id: profileId,
-        status: 'pending',
+        requester_id:
+          currentUserId,
+        addressee_id:
+          profileId,
+        status:
+          'pending',
       })
 
     if (error) {
-      if (
+      const lowerMessage =
         error.message
           .toLowerCase()
-          .includes('duplicate')
+
+      if (
+        lowerMessage.includes(
+          'duplicate'
+        ) ||
+        lowerMessage.includes(
+          'unique'
+        )
       ) {
         setMessage(
-          'A friendship or request already exists.'
+          'You already have a friend request or friendship with this collector.'
         )
       } else {
-        setMessage(error.message)
+        setMessage(
+          error.message
+        )
       }
 
       return
     }
 
-    setMessage('Friend request sent.')
+    setMessage(
+      'Friend request sent.'
+    )
+
+    setResults([])
+    setUsername('')
+
     router.refresh()
   }
 
   async function acceptRequest(
     friendshipId: number
   ) {
-    const supabase = createClient()
+    const supabase =
+      createClient()
 
-    const { error } = await supabase
+    setMessage('')
+
+    const {
+      error,
+    } = await supabase
       .from('friendships')
       .update({
-        status: 'accepted',
+        status:
+          'accepted',
       })
-      .eq('id', friendshipId)
+      .eq(
+        'id',
+        friendshipId
+      )
 
     if (error) {
-      setMessage(error.message)
+      setMessage(
+        error.message
+      )
+
       return
     }
 
@@ -140,15 +234,26 @@ export default function FriendsClient({
   async function removeFriendship(
     friendshipId: number
   ) {
-    const supabase = createClient()
+    const supabase =
+      createClient()
 
-    const { error } = await supabase
+    setMessage('')
+
+    const {
+      error,
+    } = await supabase
       .from('friendships')
       .delete()
-      .eq('id', friendshipId)
+      .eq(
+        'id',
+        friendshipId
+      )
 
     if (error) {
-      setMessage(error.message)
+      setMessage(
+        error.message
+      )
+
       return
     }
 
@@ -156,29 +261,111 @@ export default function FriendsClient({
   }
 
   return (
-    <div className="mt-10 space-y-10">
-      <section className="rounded-3xl border border-white/10 bg-zinc-950 p-5 sm:p-6">
-        <h2 className="text-xl font-semibold">
-          Find collectors
+    <div
+      className="
+        mt-10
+        space-y-12
+      "
+    >
+      <section>
+        <h2
+          className="
+            text-xl
+            font-semibold
+          "
+        >
+          Add a friend
         </h2>
 
-        <form
-          onSubmit={searchPeople}
-          className="mt-4 flex gap-2"
+        <p
+          className="
+            mt-1
+            text-sm
+            text-zinc-500
+          "
         >
-          <input
-            value={query}
-            onChange={(event) =>
-              setQuery(event.target.value)
-            }
-            placeholder="Search username or display name"
-            className="min-w-0 flex-1 rounded-full border border-white/15 bg-black px-5 py-3 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-white/40"
-          />
+          Search for a collector
+          by their LostBinder
+          username.
+        </p>
+
+        <form
+          onSubmit={
+            searchByUsername
+          }
+          className="
+            mt-5
+            flex
+            max-w-xl
+            gap-2
+          "
+        >
+          <div
+            className="
+              flex
+              min-w-0
+              flex-1
+              items-center
+              rounded-full
+              border
+              border-white/10
+              bg-zinc-950
+              px-5
+            "
+          >
+            <span
+              className="
+                text-sm
+                text-zinc-600
+              "
+            >
+              @
+            </span>
+
+            <input
+              value={
+                username
+              }
+              onChange={(
+                event
+              ) =>
+                setUsername(
+                  event.target.value
+                )
+              }
+              placeholder="username"
+              autoComplete="off"
+              className="
+                min-w-0
+                flex-1
+                bg-transparent
+                px-1
+                py-3
+                text-sm
+                text-white
+                outline-none
+                placeholder:text-zinc-700
+              "
+            />
+          </div>
 
           <button
             type="submit"
-            disabled={searching}
-            className="rounded-full bg-white px-5 py-3 text-sm font-semibold text-black disabled:opacity-50"
+            disabled={
+              searching
+            }
+            className="
+              rounded-full
+              bg-white
+              px-5
+              py-3
+              text-sm
+              font-semibold
+              text-black
+              transition
+              hover:bg-zinc-200
+              disabled:opacity-50
+            "
           >
             {searching
               ? 'Searching'
@@ -187,77 +374,242 @@ export default function FriendsClient({
         </form>
 
         {message ? (
-          <p className="mt-3 text-sm text-zinc-400">
+          <p
+            className="
+              mt-3
+              text-sm
+              text-zinc-500
+            "
+          >
             {message}
           </p>
         ) : null}
 
-        {results.length > 0 ? (
-          <div className="mt-5 divide-y divide-white/10">
-            {results.map((profile) => (
-              <div
-                key={profile.id}
-                className="flex items-center justify-between gap-4 py-4"
-              >
-                <div className="min-w-0">
-                  <p className="truncate font-medium">
-                    {nameFor(profile)}
-                  </p>
-
-                  <p className="truncate text-sm text-zinc-500">
-                    @{profile.username || 'collector'}
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    sendRequest(profile.id)
+        {results.length >
+        0 ? (
+          <div
+            className="
+              mt-5
+              max-w-xl
+              space-y-2
+            "
+          >
+            {results.map(
+              (profile) => (
+                <div
+                  key={
+                    profile.id
                   }
-                  className="shrink-0 rounded-full border border-white/20 px-4 py-2 text-sm hover:border-white/50"
+                  className="
+                    flex
+                    items-center
+                    justify-between
+                    gap-4
+                    rounded-2xl
+                    border
+                    border-white/10
+                    bg-zinc-950
+                    p-4
+                  "
                 >
-                  Add friend
-                </button>
-              </div>
-            ))}
+                  <p
+                    className="
+                      min-w-0
+                      truncate
+                      font-medium
+                    "
+                  >
+                    @
+                    {
+                      usernameFor(
+                        profile
+                      )
+                    }
+                  </p>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      sendRequest(
+                        profile.id
+                      )
+                    }
+                    className="
+                      shrink-0
+                      rounded-full
+                      border
+                      border-white/15
+                      px-4
+                      py-2
+                      text-sm
+                      transition
+                      hover:border-white/40
+                    "
+                  >
+                    Add friend
+                  </button>
+                </div>
+              )
+            )}
           </div>
         ) : null}
       </section>
 
-      {incoming.length > 0 ? (
+      {incoming.length >
+      0 ? (
         <section>
-          <h2 className="text-xl font-semibold">
+          <h2
+            className="
+              text-xl
+              font-semibold
+            "
+          >
             Friend requests
           </h2>
 
-          <div className="mt-4 space-y-3">
-            {incoming.map((item) => (
-              <div
-                key={item.friendshipId}
-                className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-zinc-950 p-4"
-              >
-                <div>
-                  <p className="font-medium">
-                    {nameFor(item.profile)}
-                  </p>
-
-                  <p className="text-sm text-zinc-500">
-                    @{item.profile.username || 'collector'}
-                  </p>
-                </div>
-
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      acceptRequest(
-                        item.friendshipId
+          <div
+            className="
+              mt-4
+              space-y-3
+            "
+          >
+            {incoming.map(
+              (item) => (
+                <div
+                  key={
+                    item.friendshipId
+                  }
+                  className="
+                    flex
+                    items-center
+                    justify-between
+                    gap-4
+                    rounded-2xl
+                    border
+                    border-white/10
+                    bg-zinc-950
+                    p-4
+                  "
+                >
+                  <p
+                    className="
+                      min-w-0
+                      truncate
+                      font-medium
+                    "
+                  >
+                    @
+                    {
+                      usernameFor(
+                        item.profile
                       )
                     }
-                    className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-black"
+                  </p>
+
+                  <div
+                    className="
+                      flex
+                      shrink-0
+                      gap-2
+                    "
                   >
-                    Accept
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        acceptRequest(
+                          item.friendshipId
+                        )
+                      }
+                      className="
+                        rounded-full
+                        bg-white
+                        px-4
+                        py-2
+                        text-sm
+                        font-semibold
+                        text-black
+                      "
+                    >
+                      Accept
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        removeFriendship(
+                          item.friendshipId
+                        )
+                      }
+                      className="
+                        rounded-full
+                        border
+                        border-white/10
+                        px-4
+                        py-2
+                        text-sm
+                        text-zinc-400
+                      "
+                    >
+                      Decline
+                    </button>
+                  </div>
+                </div>
+              )
+            )}
+          </div>
+        </section>
+      ) : null}
+
+      {outgoing.length >
+      0 ? (
+        <section>
+          <h2
+            className="
+              text-xl
+              font-semibold
+            "
+          >
+            Sent requests
+          </h2>
+
+          <div
+            className="
+              mt-4
+              space-y-3
+            "
+          >
+            {outgoing.map(
+              (item) => (
+                <div
+                  key={
+                    item.friendshipId
+                  }
+                  className="
+                    flex
+                    items-center
+                    justify-between
+                    gap-4
+                    rounded-2xl
+                    border
+                    border-white/10
+                    bg-zinc-950
+                    p-4
+                  "
+                >
+                  <p
+                    className="
+                      min-w-0
+                      truncate
+                      font-medium
+                    "
+                  >
+                    @
+                    {
+                      usernameFor(
+                        item.profile
+                      )
+                    }
+                  </p>
 
                   <button
                     type="button"
@@ -266,103 +618,165 @@ export default function FriendsClient({
                         item.friendshipId
                       )
                     }
-                    className="rounded-full border border-white/15 px-4 py-2 text-sm"
+                    className="
+                      shrink-0
+                      rounded-full
+                      border
+                      border-white/10
+                      px-4
+                      py-2
+                      text-sm
+                      text-zinc-500
+                      transition
+                      hover:text-white
+                    "
                   >
-                    Decline
+                    Cancel
                   </button>
                 </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      ) : null}
-
-      {outgoing.length > 0 ? (
-        <section>
-          <h2 className="text-xl font-semibold">
-            Sent requests
-          </h2>
-
-          <div className="mt-4 space-y-3">
-            {outgoing.map((item) => (
-              <div
-                key={item.friendshipId}
-                className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-zinc-950 p-4"
-              >
-                <div>
-                  <p className="font-medium">
-                    {nameFor(item.profile)}
-                  </p>
-
-                  <p className="text-sm text-zinc-500">
-                    Pending
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    removeFriendship(
-                      item.friendshipId
-                    )
-                  }
-                  className="rounded-full border border-white/15 px-4 py-2 text-sm"
-                >
-                  Cancel
-                </button>
-              </div>
-            ))}
+              )
+            )}
           </div>
         </section>
       ) : null}
 
       <section>
-        <h2 className="text-xl font-semibold">
+        <h2
+          className="
+            text-xl
+            font-semibold
+          "
+        >
           Your friends
         </h2>
 
-        {accepted.length === 0 ? (
-          <p className="mt-3 text-sm text-zinc-500">
-            No friends yet. Search for another
-            LostBinder collector above.
-          </p>
+        <p
+          className="
+            mt-1
+            text-sm
+            text-zinc-600
+          "
+        >
+          {accepted.length}{' '}
+          {accepted.length ===
+          1
+            ? 'friend'
+            : 'friends'}
+        </p>
+
+        {accepted.length ===
+        0 ? (
+          <div
+            className="
+              mt-8
+              rounded-3xl
+              border
+              border-white/10
+              bg-zinc-950
+              px-6
+              py-12
+              text-center
+            "
+          >
+            <p
+              className="
+                text-zinc-500
+              "
+            >
+              You haven&apos;t
+              added any friends
+              yet.
+            </p>
+
+            <p
+              className="
+                mt-2
+                text-sm
+                text-zinc-700
+              "
+            >
+              Search for someone
+              by username above.
+            </p>
+          </div>
         ) : (
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            {accepted.map((item) => (
-              <div
-                key={item.friendshipId}
-                className="rounded-2xl border border-white/10 bg-zinc-950 p-4"
-              >
-                <Link
-                  href={`/friends/${item.profile.id}`}
-                  className="block"
-                >
-                  <p className="font-medium">
-                    {nameFor(item.profile)}
-                  </p>
-
-                  <p className="mt-1 text-sm text-zinc-500">
-                    @{item.profile.username || 'collector'}
-                  </p>
-
-                  <p className="mt-4 text-sm text-white">
-                    View Loved cards →
-                  </p>
-                </Link>
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    removeFriendship(
-                      item.friendshipId
-                    )
+          <div
+            className="
+              mt-5
+              grid
+              gap-3
+              sm:grid-cols-2
+            "
+          >
+            {accepted.map(
+              (item) => (
+                <div
+                  key={
+                    item.friendshipId
                   }
-                  className="mt-4 text-xs text-zinc-600 hover:text-zinc-300"
+                  className="
+                    rounded-2xl
+                    border
+                    border-white/10
+                    bg-zinc-950
+                    p-5
+                  "
                 >
-                  Remove friend
-                </button>
-              </div>
-            ))}
+                  <Link
+                    href={
+                      `/friends/${item.profile.id}`
+                    }
+                    className="
+                      block
+                    "
+                  >
+                    <p
+                      className="
+                        truncate
+                        text-lg
+                        font-medium
+                      "
+                    >
+                      @
+                      {
+                        usernameFor(
+                          item.profile
+                        )
+                      }
+                    </p>
+
+                    <p
+                      className="
+                        mt-6
+                        text-sm
+                        text-zinc-300
+                      "
+                    >
+                      View collection
+                      →
+                    </p>
+                  </Link>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      removeFriendship(
+                        item.friendshipId
+                      )
+                    }
+                    className="
+                      mt-5
+                      text-xs
+                      text-zinc-700
+                      transition
+                      hover:text-zinc-400
+                    "
+                  >
+                    Remove friend
+                  </button>
+                </div>
+              )
+            )}
           </div>
         )}
       </section>
