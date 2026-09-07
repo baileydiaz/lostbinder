@@ -227,11 +227,11 @@ export default function ReactionButtons({
           className={
             reaction === 'like'
               ? compact
-                ? 'rounded-full bg-white px-3 py-2 text-xs font-semibold text-black'
-                : 'rounded-full bg-white px-6 py-3 font-semibold text-black'
+                ? 'rounded-full bg-white px-3 py-2 text-xs font-semibold text-black transition'
+                : 'rounded-full bg-white px-6 py-3 font-semibold text-black transition'
               : compact
-                ? 'rounded-full border border-white/15 px-3 py-2 text-xs text-zinc-400'
-                : 'rounded-full border border-white/15 px-6 py-3 text-zinc-300 transition hover:border-white/40'
+                ? 'rounded-full border border-white/15 px-3 py-2 text-xs text-zinc-400 transition hover:border-white/40 hover:text-white'
+                : 'rounded-full border border-white/15 px-6 py-3 text-zinc-300 transition hover:border-white/40 hover:text-white'
           }
         >
           👍 Like
@@ -246,11 +246,11 @@ export default function ReactionButtons({
           className={
             reaction === 'love'
               ? compact
-                ? 'rounded-full bg-white px-3 py-2 text-xs font-semibold text-black'
-                : 'rounded-full bg-white px-6 py-3 font-semibold text-black'
+                ? 'rounded-full bg-red-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-red-500'
+                : 'rounded-full bg-red-600 px-6 py-3 font-semibold text-white transition hover:bg-red-500'
               : compact
-                ? 'rounded-full border border-white/15 px-3 py-2 text-xs text-zinc-400'
-                : 'rounded-full border border-white/15 px-6 py-3 text-zinc-300 transition hover:border-white/40'
+                ? 'rounded-full border border-red-500/40 px-3 py-2 text-xs font-semibold text-red-500 transition hover:border-red-500 hover:bg-red-500/10'
+                : 'rounded-full border border-red-500/40 px-6 py-3 font-semibold text-red-500 transition hover:border-red-500 hover:bg-red-500/10'
           }
         >
           ♥ Love
