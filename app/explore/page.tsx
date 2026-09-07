@@ -1,9 +1,11 @@
-import { createClient } from '@/lib/supabase/server'
-import ExploreDeck from './explore-deck'
+import {
+  createClient,
+} from '@/lib/supabase/server'
 
-export const dynamic = 'force-dynamic'
+import ExploreCard
+  from './explore-card'
 
-type Card = {
+type CardRecord = {
   id: string
   local_id: string
   name: string
@@ -14,74 +16,65 @@ type Card = {
   category: string | null
 }
 
-type SetInfo = {
+type SetRow = {
   id: string
   name: string
 }
 
-type ExploreCardData = Card & {
+type ExploreCardType = CardRecord & {
   set_name: string
 }
 
-function shuffle<T>(items: T[]) {
-  const array = [...items]
+function shuffle<T>(
+  items: T[]
+) {
+  const result =
+    [...items]
 
-  for (let i = array.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[array[i], array[j]] = [array[j], array[i]]
+  for (
+    let i =
+      result.length - 1;
+
+    i > 0;
+
+    i--
+  ) {
+    const j =
+      Math.floor(
+        Math.random()
+          * (i + 1)
+      )
+
+    ;[
+      result[i],
+      result[j],
+    ] = [
+      result[j],
+      result[i],
+    ]
   }
 
-  return array
+  return result
 }
 
 export default async function ExplorePage() {
-  const supabase = await createClient()
+  const supabase =
+    await createClient()
 
   const {
-    data: { user },
-  } = await supabase.auth.getUser()
+    data: {
+      user,
+    },
+  } =
+    await supabase
+      .auth
+      .getUser()
 
-  const { data: rawSets, error: setsError } = await supabase
-    .from('sets')
-    .select('id, name')
-
-  if (setsError) {
-    return (
-      <main
-        style={{
-          maxWidth: '700px',
-          margin: '0 auto',
-          padding: '40px 20px',
-        }}
-      >
-        <h1>Discover</h1>
-        <p>Could not load Pokémon sets.</p>
-        <p>{setsError.message}</p>
-      </main>
-    )
-  }
-
-  const filteredSets = ((rawSets ?? []) as SetInfo[]).filter(
-    (set) => {
-      const name = set.name.toLowerCase()
-
-      return (
-        !name.includes('trainer kit') &&
-        !name.includes('trainer gallery') &&
-        !name.includes("mcdonald") &&
-        !name.includes('my first battle') &&
-        !name.includes('energy')
-      )
-    }
-  )
-
-  const randomizedSets = shuffle(filteredSets)
-  const chosenSets = randomizedSets.slice(0, 50)
-
-  let pool: ExploreCardData[] = []
-
-  for (const set of chosenSets) {
-    const { data: cards } = await supabase
+  const {
+    data: cardsData,
+    error: cardsError,
+  } =
+    await supabase
       .from('cards')
       .select(`
         id,
@@ -93,158 +86,247 @@ export default async function ExplorePage() {
         set_id,
         category
       `)
-      .eq('set_id', set.id)
-      .in('category', ['Pokemon', 'Pokémon'])
-      .not('image_url', 'is', null)
-      .limit(12)
+      .not(
+        'image_url',
+        'is',
+        null
+      )
+      .limit(180)
 
-    const mapped = ((cards ?? []) as Card[]).map(
-      (card) => ({
-        ...card,
-        set_name: set.name,
-      })
+  if (cardsError) {
+    return (
+      <main
+        className="
+          min-h-screen
+          bg-black
+          px-6
+          py-16
+          text-white
+        "
+      >
+        <div
+          className="
+            mx-auto
+            max-w-xl
+          "
+        >
+          <h1
+            className="
+              text-3xl
+              font-semibold
+            "
+          >
+            Explore
+          </h1>
+
+          <p
+            className="
+              mt-4
+              text-red-400
+            "
+          >
+            Could not load cards:
+            {' '}
+            {
+              cardsError
+                .message
+            }
+          </p>
+        </div>
+      </main>
+    )
+  }
+
+  const cards = (cardsData ?? []) as CardRecord[]
+
+  const setIds =
+    Array.from(
+      new Set(
+        cards.map(
+          (card) =>
+            card.set_id
+        )
+      )
     )
 
-    pool.push(...mapped)
+  let sets:
+    SetRow[] = []
+
+  if (
+    setIds.length > 0
+  ) {
+    const {
+      data,
+    } =
+      await supabase
+        .from('sets')
+        .select(
+          'id, name'
+        )
+        .in(
+          'id',
+          setIds
+        )
+
+      sets = (data ?? []) as SetRow[]
   }
 
-  pool = shuffle(pool)
-
-  const selected: ExploreCardData[] = []
-  const usedSets = new Set<string>()
-  const usedArtists = new Set<string>()
-
-  for (const card of pool) {
-    if (selected.length >= 36) break
-
-    const artist = card.illustrator?.trim()
-
-    if (usedSets.has(card.set_id)) continue
-
-    if (artist && usedArtists.has(artist)) {
-      continue
-    }
-
-    selected.push(card)
-    usedSets.add(card.set_id)
-
-    if (artist) {
-      usedArtists.add(artist)
-    }
-  }
-
-  for (const card of pool) {
-    if (selected.length >= 60) break
-
-    const alreadySelected = selected.some(
-      (selectedCard) =>
-        selectedCard.id === card.id
+  const setNameById =
+    new Map(
+      sets.map(
+        (set) => [
+          set.id,
+          set.name,
+        ]
+      )
     )
 
-    if (alreadySelected) continue
+  const exploreCards:
+    ExploreCardType[] =
+      shuffle(cards)
+        .slice(0, 50)
+        .map(
+          (card) => ({
+            ...card,
 
-    const artist = card.illustrator?.trim()
+            set_name:
+              setNameById
+                .get(
+                  card.set_id
+                )
+              ??
+              card.set_id,
+          })
+        )
 
-    if (artist && usedArtists.has(artist)) {
-      continue
-    }
+  const initialReactions:
+    Record<
+      string,
+      'like' | 'love'
+    > = {}
 
-    selected.push(card)
-
-    if (artist) {
-      usedArtists.add(artist)
-    }
-  }
-
-  for (const card of pool) {
-    if (selected.length >= 80) break
-
-    const alreadySelected = selected.some(
-      (selectedCard) =>
-        selectedCard.id === card.id
-    )
-
-    if (alreadySelected) continue
-
-    selected.push(card)
-  }
-
-  let favoriteIds = new Set<string>()
-
-  if (user && selected.length > 0) {
-    const { data: favorites } = await supabase
-      .from('card_favorites')
-      .select('card_id')
-      .eq('user_id', user.id)
-      .in(
-        'card_id',
-        selected.map((card) => card.id)
+  if (
+    user
+    &&
+    exploreCards.length > 0
+  ) {
+    const ids =
+      exploreCards.map(
+        (card) =>
+          card.id
       )
 
-    favoriteIds = new Set(
-      favorites?.map(
-        (favorite) => favorite.card_id
-      ) ?? []
-    )
-  }
+    const {
+      data: reactions,
+    } =
+      await supabase
+        .from(
+          'card_reactions'
+        )
+        .select(
+          'card_id, reaction'
+        )
+        .eq(
+          'user_id',
+          user.id
+        )
+        .in(
+          'card_id',
+          ids
+        )
 
-  const deckCards = selected
-    .filter(
-      (
-        card
-      ): card is ExploreCardData & {
-        image_url: string
-      } => Boolean(card.image_url)
-    )
-    .map((card) => ({
-      id: card.id,
-      name: card.name,
-      rarity: card.rarity,
-      illustrator: card.illustrator,
-      image_url: card.image_url,
-      set_id: card.set_id,
-      set_name: card.set_name,
-    }))
+    for (
+      const row
+      of reactions ?? []
+    ) {
+      if (
+        row.reaction
+          === 'like'
+        ||
+        row.reaction
+          === 'love'
+      ) {
+        initialReactions[
+          row.card_id
+        ] =
+          row.reaction
+      }
+    }
+  }
 
   return (
     <main
-      style={{
-        width: '100%',
-        maxWidth: '1400px',
-        margin: '0 auto',
-        padding: '24px 16px 80px',
-      }}
+      className="
+        min-h-screen
+        bg-black
+        px-4
+        py-8
+        text-white
+        sm:px-6
+      "
     >
       <div
-        style={{
-          textAlign: 'center',
-          marginBottom: '20px',
-        }}
+        className="
+          mx-auto
+          max-w-lg
+        "
       >
-        <h1
-          style={{
-            margin: 0,
-            fontSize: 'clamp(30px, 7vw, 40px)',
-          }}
+        <div
+          className="
+            mb-6
+          "
         >
-          Discover
-        </h1>
+          <p
+            className="
+              text-xs
+              font-semibold
+              uppercase
+              tracking-[0.28em]
+              text-zinc-500
+            "
+          >
+            LostBinder
+          </p>
 
-        <p
-          style={{
-            marginTop: '8px',
-            opacity: 0.65,
-          }}
-        >
-          Find Pokémon cards you love.
-        </p>
+          <h1
+            className="
+              mt-2
+              text-3xl
+              font-semibold
+            "
+          >
+            Explore
+          </h1>
+
+          <p
+            className="
+              mt-2
+              text-sm
+              text-zinc-400
+            "
+          >
+            Like trains your taste.
+            Love adds a card to your
+            collection and counts
+            even more.
+          </p>
+        </div>
+
+        <ExploreCard
+          cards={
+            exploreCards
+          }
+
+          userId={
+            user?.id
+            ?? null
+          }
+
+          initialReactions={
+            initialReactions
+          }
+        />
       </div>
-
-      <ExploreDeck
-        cards={deckCards}
-        favoriteIds={Array.from(favoriteIds)}
-        loggedIn={Boolean(user)}
-      />
     </main>
   )
 }

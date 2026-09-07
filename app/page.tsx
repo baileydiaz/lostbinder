@@ -1,182 +1,330 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import CardRow, {
+  RowCard,
+} from '@/app/components/card-row'
 
-type Card = {
-  id: string
-  local_id: string
-  name: string
-  rarity: string | null
-  illustrator: string | null
-  image_url: string | null
-  set_id: string
+type CuratedList = {
+  id: number
+  slug: string
+  title: string
+  description: string | null
+  sort_order: number
 }
 
-export default async function Home() {
+type CuratedListCard = {
+  list_id: number
+  card_id: string
+  sort_order: number
+}
+
+type CardRecord = RowCard
+
+export default async function HomePage() {
   const supabase = await createClient()
 
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
-  let cards: Card[] = []
-  let title = 'Prismatic Evolutions'
-  let subtitle = 'A few cards to explore'
+  const {
+    data: listData,
+    error: listError,
+  } = await supabase
+    .from('curated_lists')
+    .select(`
+      id,
+      slug,
+      title,
+      description,
+      sort_order
+    `)
+    .order('sort_order', {
+      ascending: true,
+    })
 
-  if (user) {
-    const { data: favorites } = await supabase
-      .from('card_favorites')
-      .select(`
-        card_id,
-        cards (
-          id,
-          local_id,
-          name,
-          rarity,
-          illustrator,
-          image_url,
-          set_id
-        )
-      `)
-      .eq('user_id', user.id)
-      .order('created_at', {
-        ascending: false,
-      })
-      .limit(24)
-
-    cards =
-      favorites
-        ?.map((favorite: any) => favorite.cards)
-        .filter(Boolean) ?? []
-
-    title = 'Your Favorites'
-    subtitle =
-      cards.length > 0
-        ? `${cards.length} favorite cards`
-        : 'You have not favorited any cards yet'
+  if (listError) {
+    console.error(
+      'Could not load curated lists:',
+      listError.message
+    )
   }
 
-  if (!user || cards.length === 0) {
-    const { data: set } = await supabase
-      .from('sets')
-      .select('id')
-      .ilike('name', 'Prismatic Evolutions')
-      .single()
+  const lists =
+    (listData ?? []) as CuratedList[]
 
-    if (set) {
-      const { data: prismaticCards } = await supabase
-        .from('cards')
-        .select(`
-          id,
-          local_id,
-          name,
-          rarity,
-          illustrator,
-          image_url,
-          set_id
-        `)
-        .eq('set_id', set.id)
-        .not('image_url', 'is', null)
-        .limit(24)
+  const listIds = lists.map(
+    (list) => list.id
+  )
 
-      cards = (prismaticCards ?? []) as Card[]
+  let listCardData: CuratedListCard[] = []
+
+  if (listIds.length > 0) {
+    const {
+      data,
+      error,
+    } = await supabase
+      .from('curated_list_cards')
+      .select(`
+        list_id,
+        card_id,
+        sort_order
+      `)
+      .in('list_id', listIds)
+      .order('sort_order', {
+        ascending: true,
+      })
+
+    if (error) {
+      console.error(
+        'Could not load curated list cards:',
+        error.message
+      )
     }
 
-    if (user) {
-      title = 'Start Your Favorites'
-      subtitle =
-        'Favorite cards you love and they will appear here'
+    listCardData =
+      (data ?? []) as CuratedListCard[]
+  }
+
+  const cardIds = Array.from(
+    new Set(
+      listCardData.map(
+        (item) => item.card_id
+      )
+    )
+  )
+
+  let cards: CardRecord[] = []
+
+  if (cardIds.length > 0) {
+    const {
+      data,
+      error,
+    } = await supabase
+      .from('cards')
+      .select(`
+        id,
+        name,
+        rarity,
+        image_url,
+        set_id
+      `)
+      .in('id', cardIds)
+
+    if (error) {
+      console.error(
+        'Could not load cards:',
+        error.message
+      )
+    }
+
+    cards = (data ?? []) as CardRecord[]
+  }
+
+  const cardById = new Map(
+    cards.map((card) => [
+      card.id,
+      card,
+    ])
+  )
+
+  const reactions: Record<
+    string,
+    'like' | 'love'
+  > = {}
+
+  if (
+    user &&
+    cardIds.length > 0
+  ) {
+    const {
+      data,
+      error,
+    } = await supabase
+      .from('card_reactions')
+      .select(`
+        card_id,
+        reaction
+      `)
+      .eq(
+        'user_id',
+        user.id
+      )
+      .in(
+        'card_id',
+        cardIds
+      )
+
+    if (error) {
+      console.error(
+        'Could not load reactions:',
+        error.message
+      )
+    }
+
+    for (const row of data ?? []) {
+      if (
+        row.reaction === 'like' ||
+        row.reaction === 'love'
+      ) {
+        reactions[row.card_id] =
+          row.reaction
+      }
     }
   }
 
   return (
-    <main
-      style={{
-        maxWidth: '1400px',
-        margin: '0 auto',
-        padding: '40px 24px',
-      }}
-    >
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          gap: '20px',
-          marginBottom: '32px',
-        }}
-      >
-        <div>
-          <h1 style={{ margin: 0 }}>{title}</h1>
-
-          <p
-            style={{
-              marginTop: '8px',
-              opacity: 0.7,
-            }}
-          >
-            {subtitle}
-          </p>
-        </div>
-
-        <Link
-          href="/sets"
-          style={{
-            textDecoration: 'none',
-            fontWeight: 600,
-          }}
-        >
-          Explore all sets →
-        </Link>
-      </div>
-
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns:
-            'repeat(auto-fill, minmax(180px, 1fr))',
-          gap: '24px',
-        }}
-      >
-        {cards.map((card) => (
+    <main className="min-h-screen bg-black text-white">
+      <header className="border-b border-white/10">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5 sm:px-8">
           <Link
-            key={card.id}
-            href={`/sets/${card.set_id}`}
-            style={{
-              color: 'inherit',
-              textDecoration: 'none',
-            }}
+            href="/"
+            className="text-xl font-semibold"
           >
-            {card.image_url && (
-              <img
-                src={card.image_url}
-                alt={card.name}
-                style={{
-                  width: '100%',
-                  display: 'block',
-                  borderRadius: '12px',
-                }}
-              />
-            )}
-
-            <div style={{ marginTop: '10px' }}>
-              <strong>{card.name}</strong>
-
-              <div
-                style={{
-                  fontSize: '14px',
-                  opacity: 0.65,
-                  marginTop: '3px',
-                }}
-              >
-                #{card.local_id}
-                {card.rarity
-                  ? ` • ${card.rarity}`
-                  : ''}
-              </div>
-            </div>
+            LostBinder
           </Link>
-        ))}
-      </div>
+
+          <nav className="flex items-center gap-5 text-sm text-zinc-400">
+            <Link
+              href="/explore"
+              className="transition hover:text-white"
+            >
+              Explore
+            </Link>
+
+            {user ? (
+              <>
+                <Link
+                  href="/collection"
+                  className="transition hover:text-white"
+                >
+                  Collection
+                </Link>
+
+                <Link
+                  href="/friends"
+                  className="transition hover:text-white"
+                >
+                  Friends
+                </Link>
+              </>
+            ) : (
+              <Link
+                href="/login"
+                className="transition hover:text-white"
+              >
+                Sign in
+              </Link>
+            )}
+          </nav>
+        </div>
+      </header>
+
+      <section className="mx-auto max-w-7xl px-5 pb-10 pt-16 sm:px-8 sm:pt-24">
+        <p className="text-xs font-semibold uppercase tracking-[0.28em] text-zinc-500">
+          Discover Pokémon cards
+        </p>
+
+        <h1 className="mt-4 max-w-4xl text-5xl font-semibold tracking-tight sm:text-7xl">
+          Find cards you didn&apos;t know you loved.
+        </h1>
+
+        <p className="mt-6 max-w-2xl text-base leading-7 text-zinc-400 sm:text-lg">
+          Explore Pokémon cards one at a time,
+          build your collection, and discover
+          what other collectors love.
+        </p>
+
+        <div className="mt-8 flex flex-wrap gap-3">
+          <Link
+            href="/explore"
+            className="rounded-full bg-white px-6 py-3 text-sm font-semibold text-black transition hover:bg-zinc-200"
+          >
+            Start exploring
+          </Link>
+
+          {user ? (
+            <Link
+              href="/collection"
+              className="rounded-full border border-white/15 px-6 py-3 text-sm font-semibold text-white transition hover:border-white/40"
+            >
+              View collection
+            </Link>
+          ) : (
+            <Link
+              href="/login"
+              className="rounded-full border border-white/15 px-6 py-3 text-sm font-semibold text-white transition hover:border-white/40"
+            >
+              Sign in
+            </Link>
+          )}
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-7xl px-5 pb-20 sm:px-8">
+        {lists.length === 0 ? (
+          <div className="rounded-3xl border border-white/10 bg-zinc-950 p-8">
+            <h2 className="text-xl font-semibold">
+              Curated lists aren&apos;t ready yet.
+            </h2>
+
+            <p className="mt-2 text-sm text-zinc-500">
+              Run the LostBinder social SQL in
+              Supabase to create and populate the
+              curated lists.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {lists.map((list) => {
+              const listCards =
+                listCardData
+                  .filter(
+                    (item) =>
+                      item.list_id === list.id
+                  )
+                  .sort(
+                    (a, b) =>
+                      a.sort_order -
+                      b.sort_order
+                  )
+                  .map(
+                    (item) =>
+                      cardById.get(
+                        item.card_id
+                      )
+                  )
+                  .filter(
+                    (
+                      card
+                    ): card is CardRecord =>
+                      card !== undefined
+                  )
+
+              return (
+                <div key={list.id}>
+                  {list.description ? (
+                    <div className="mb-1">
+                      <p className="text-sm text-zinc-500">
+                        {list.description}
+                      </p>
+                    </div>
+                  ) : null}
+
+                  <CardRow
+                    title={list.title}
+                    cards={listCards}
+                    userId={
+                      user?.id ?? null
+                    }
+                    reactions={reactions}
+                  />
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </section>
     </main>
   )
 }

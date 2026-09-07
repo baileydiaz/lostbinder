@@ -2,10 +2,17 @@ import type {
   Metadata,
   Viewport,
 } from 'next'
+
 import Link from 'next/link'
+import { Geist } from 'next/font/google'
+
 import './globals.css'
 
 import { createClient } from '@/lib/supabase/server'
+
+const geist = Geist({
+  subsets: ['latin'],
+})
 
 export const metadata: Metadata = {
   title: 'LostBinder',
@@ -31,11 +38,10 @@ export default async function RootLayout({
 
   return (
     <html lang="en">
-      <body>
+      <body className={geist.className}>
         <header
           style={{
-            borderBottom:
-              '1px solid #e5e5e5',
+            borderBottom: '1px solid #222',
             background: '#000',
           }}
         >
@@ -46,7 +52,7 @@ export default async function RootLayout({
               padding: '14px 16px',
               display: 'flex',
               alignItems: 'center',
-              gap: '18px',
+              gap: '20px',
               overflowX: 'auto',
               whiteSpace: 'nowrap',
             }}
@@ -55,7 +61,8 @@ export default async function RootLayout({
               href="/"
               style={{
                 fontSize: '22px',
-                fontWeight: 800,
+                fontWeight: 750,
+                letterSpacing: '-0.04em',
                 color: '#fff',
                 textDecoration: 'none',
                 marginRight: 'auto',
