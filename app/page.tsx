@@ -212,7 +212,7 @@ export default async function HomePage() {
           <div className="mt-8 flex flex-wrap gap-3">
             <Link
               href="/explore"
-              className="rounded-full bg-white px-6 py-3 text-sm font-semibold text-black transition hover:bg-zinc-200"
+              className="rounded-full border border-white/10 px-6 py-3 text-sm text-zinc-300 transition hover:border-white/30 hover:text-white"
             >
               Start exploring
             </Link>
