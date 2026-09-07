@@ -37,60 +37,30 @@ export default function ExploreCard({
   userId,
   initialReactions,
 }: Props) {
-  const [
-    index,
-    setIndex,
-  ] = useState(0)
+  const [index, setIndex] = useState(0)
 
-  const [
-    reactions,
-    setReactions,
-  ] =
-    useState<
-      Record<
-        string,
-        Reaction
-      >
-    >(
+  const [reactions, setReactions] =
+    useState<Record<string, Reaction>>(
       initialReactions
     )
 
-  const [
-    badCardIds,
-    setBadCardIds,
-  ] =
-    useState<
-      Set<string>
-    >(
-      new Set()
-    )
+  const [badCardIds, setBadCardIds] =
+    useState<Set<string>>(new Set())
 
-  const [
-    imageLoaded,
-    setImageLoaded,
-  ] =
+  const [imageLoaded, setImageLoaded] =
     useState(false)
 
-  const visibleCards =
-    useMemo(
-      () =>
-        cards.filter(
-          (card) =>
-            Boolean(
-              card.image_url
-            ) &&
-            !badCardIds.has(
-              card.id
-            )
-        ),
-      [
-        cards,
-        badCardIds,
-      ]
-    )
+  const visibleCards = useMemo(
+    () =>
+      cards.filter(
+        (card) =>
+          Boolean(card.image_url) &&
+          !badCardIds.has(card.id)
+      ),
+    [cards, badCardIds]
+  )
 
-  const card =
-    visibleCards[index]
+  const card = visibleCards[index]
 
   useEffect(() => {
     setImageLoaded(false)
@@ -98,56 +68,36 @@ export default function ExploreCard({
 
   useEffect(() => {
     if (
-      index >=
-      visibleCards.length &&
+      index >= visibleCards.length &&
       visibleCards.length > 0
     ) {
-      setIndex(
-        visibleCards.length -
-          1
-      )
+      setIndex(visibleCards.length - 1)
     }
-  }, [
-    index,
-    visibleCards.length,
-  ])
+  }, [index, visibleCards.length])
 
   function nextCard() {
-    setIndex(
-      (current) =>
-        current + 1
-    )
+    setIndex((current) => current + 1)
   }
 
   function previousCard() {
-    setIndex(
-      (current) =>
-        Math.max(
-          0,
-          current - 1
-        )
+    setIndex((current) =>
+      Math.max(0, current - 1)
     )
   }
 
   function killBrokenCard(
     cardId: string
   ) {
-    setBadCardIds(
-      (current) => {
-        const next =
-          new Set(
-            current
-          )
+    setBadCardIds((current) => {
+      const next = new Set(current)
+      next.add(cardId)
 
-        next.add(cardId)
-
-        return next
-      }
-    )
+      return next
+    })
   }
 
   const progress =
-    visibleCards.length
+    visibleCards.length > 0
       ? Math.min(
           100,
           ((index + 1) /
@@ -156,10 +106,7 @@ export default function ExploreCard({
         )
       : 0
 
-  if (
-    visibleCards.length ===
-    0
-  ) {
+  if (visibleCards.length === 0) {
     return (
       <p className="text-sm text-zinc-500">
         No cards available.
@@ -175,266 +122,122 @@ export default function ExploreCard({
         </h2>
 
         <p className="mt-2 text-sm text-zinc-500">
-          Refresh for another
-          stack.
+          Refresh for another stack.
         </p>
       </div>
     )
   }
 
   const currentReaction =
-    reactions[card.id] ??
-    null
+    reactions[card.id] ?? null
 
   return (
-    <div
-      className="
-        w-full
-        max-w-[380px]
-      "
-    >
-      <div
-        className="
-          mb-3
-          flex
-          items-center
-          gap-3
-        "
-      >
-        <div
-          className="
-            h-[3px]
-            flex-1
-            overflow-hidden
-            rounded-full
-            bg-zinc-900
-          "
-        >
-          <div
-            className="
-              h-full
-              bg-white
-              transition-all
-              duration-300
-            "
-            style={{
-              width:
-                `${progress}%`,
-            }}
-          />
-        </div>
-
-        <span
-          className="
-            text-[11px]
-            text-zinc-600
-          "
-        >
-          {index + 1}
-          /
-          {
-            visibleCards.length
-          }
-        </span>
-      </div>
-
-      <div
-        className="
-          overflow-hidden
-          rounded-[26px]
-          border
-          border-white/10
-          bg-zinc-950
-          shadow-2xl
-        "
-      >
-        <Link
-          href={
-            `/cards/${card.id}`
-          }
-          className="
-            relative
-            flex
-            aspect-[2.5/3.5]
-            w-full
-            items-center
-            justify-center
-            overflow-hidden
-            bg-zinc-950
-          "
-        >
-          {!imageLoaded ? (
+    <div className="flex w-full justify-center">
+      <div className="w-full max-w-[360px]">
+        <div className="mb-3 flex items-center gap-3">
+          <div className="h-[3px] flex-1 overflow-hidden rounded-full bg-zinc-900">
             <div
-              className="
-                absolute
-                inset-0
-                animate-pulse
-                bg-zinc-900
-              "
-            />
-          ) : null}
-
-          <img
-            src={
-              card.image_url!
-            }
-            alt={card.name}
-            onLoad={() =>
-              setImageLoaded(
-                true
-              )
-            }
-            onError={() =>
-              killBrokenCard(
-                card.id
-              )
-            }
-            className={`
-              h-full
-              w-full
-              object-contain
-              transition-opacity
-              duration-200
-              ${
-                imageLoaded
-                  ? 'opacity-100'
-                  : 'opacity-0'
-              }
-            `}
-          />
-        </Link>
-
-        <div className="p-4">
-          <p
-            className="
-              truncate
-              text-xs
-              text-zinc-500
-            "
-          >
-            {card.set_name}
-          </p>
-
-          <div
-            className="
-              mt-1
-              flex
-              items-start
-              justify-between
-              gap-3
-            "
-          >
-            <div className="min-w-0">
-              <h2
-                className="
-                  truncate
-                  text-xl
-                  font-semibold
-                "
-              >
-                {card.name}
-              </h2>
-
-              <p
-                className="
-                  mt-1
-                  truncate
-                  text-xs
-                  text-zinc-500
-                "
-              >
-                {card.rarity ||
-                  'Pokémon card'}
-
-                {card.illustrator
-                  ? ` · ${card.illustrator}`
-                  : ''}
-              </p>
-            </div>
-          </div>
-
-          <div
-            className="
-              mt-4
-              flex
-              justify-center
-            "
-          >
-            <ReactionButtons
-              cardId={
-                card.id
-              }
-              userId={
-                userId
-              }
-              initialReaction={
-                currentReaction
-              }
-              onSaved={(
-                nextReaction
-              ) => {
-                setReactions(
-                  (
-                    current
-                  ) => ({
-                    ...current,
-                    [card.id]:
-                      nextReaction,
-                  })
-                )
-
-                if (
-                  nextReaction
-                ) {
-                  setTimeout(
-                    nextCard,
-                    100
-                  )
-                }
+              className="h-full bg-white transition-all duration-300"
+              style={{
+                width: `${progress}%`,
               }}
             />
           </div>
 
-          <button
-            type="button"
-            onClick={
-              nextCard
-            }
-            className="
-              mt-3
-              w-full
-              rounded-full
-              border
-              border-white/10
-              py-2.5
-              text-sm
-              text-zinc-500
-              transition
-              hover:border-white/25
-              hover:text-white
-            "
-          >
-            ✕ Don&apos;t Like
-          </button>
+          <span className="text-[11px] text-zinc-600">
+            {index + 1}/{visibleCards.length}
+          </span>
+        </div>
 
-          {index > 0 ? (
+        <div className="overflow-hidden rounded-[28px] border border-white/10 bg-zinc-950 shadow-2xl">
+          <Link
+            href={`/cards/${card.id}`}
+            className="relative flex aspect-[2.5/3.5] w-full items-center justify-center overflow-hidden bg-zinc-950"
+          >
+            {!imageLoaded ? (
+              <div className="absolute inset-0 animate-pulse bg-zinc-900" />
+            ) : null}
+
+            <img
+              src={card.image_url!}
+              alt={card.name}
+              onLoad={() =>
+                setImageLoaded(true)
+              }
+              onError={() =>
+                killBrokenCard(card.id)
+              }
+              className={`h-full w-full object-contain transition-opacity duration-200 ${
+                imageLoaded
+                  ? 'opacity-100'
+                  : 'opacity-0'
+              }`}
+            />
+          </Link>
+
+          <div className="p-4">
+            <p className="truncate text-xs text-zinc-500">
+              {card.set_name}
+            </p>
+
+            <h2 className="mt-1 truncate text-xl font-semibold tracking-tight">
+              {card.name}
+            </h2>
+
+            <p className="mt-1 truncate text-xs text-zinc-500">
+              {card.rarity ||
+                'Pokémon card'}
+              {card.illustrator
+                ? ` · ${card.illustrator}`
+                : ''}
+            </p>
+
+            <div className="mt-4">
+              <ReactionButtons
+                cardId={card.id}
+                userId={userId}
+                initialReaction={
+                  currentReaction
+                }
+                onSaved={(
+                  nextReaction
+                ) => {
+                  setReactions(
+                    (current) => ({
+                      ...current,
+                      [card.id]:
+                        nextReaction,
+                    })
+                  )
+
+                  if (nextReaction) {
+                    setTimeout(
+                      nextCard,
+                      100
+                    )
+                  }
+                }}
+              />
+            </div>
+
             <button
               type="button"
-              onClick={
-                previousCard
-              }
-              className="
-                mt-3
-                w-full
-                text-center
-                text-xs
-                text-zinc-700
-                hover:text-zinc-400
-              "
+              onClick={nextCard}
+              className="mt-3 w-full rounded-full border border-white/10 py-2.5 text-sm text-zinc-500 transition hover:border-white/25 hover:text-white"
             >
-              ← Previous
+              ✕ Don&apos;t Like
             </button>
-          ) : null}
+
+            {index > 0 ? (
+              <button
+                type="button"
+                onClick={previousCard}
+                className="mt-3 w-full text-center text-xs text-zinc-700 transition hover:text-zinc-400"
+              >
+                ← Previous
+              </button>
+            ) : null}
+          </div>
         </div>
       </div>
     </div>
