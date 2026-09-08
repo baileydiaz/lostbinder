@@ -35,6 +35,15 @@ type ReactionRow = {
   updated_at: string
 }
 
+type FavoriteRow = {
+  card_id: string
+  created_at: string
+}
+
+type DismissalRow = {
+  card_id: string
+}
+
 export default async function HomePage() {
   const supabase =
     await createClient()
@@ -57,37 +66,102 @@ export default async function HomePage() {
     CardRecord[] = []
 
   if (user) {
-    const {
-      data: reactionData,
-      error: reactionError,
-    } = await supabase
-      .from('card_reactions')
-      .select(`
-        card_id,
-        reaction,
-        updated_at
-      `)
-      .eq(
-        'user_id',
-        user.id
-      )
-      .order(
-        'updated_at',
-        {
-          ascending: false,
-        }
-      )
+    /*
+     * Load Likes/Loves, Favorites,
+     * and dismissed cards.
+     */
+    const [
+      reactionsResult,
+      favoritesResult,
+      dismissalsResult,
+    ] = await Promise.all([
+      supabase
+        .from('card_reactions')
+        .select(`
+          card_id,
+          reaction,
+          updated_at
+        `)
+        .eq(
+          'user_id',
+          user.id
+        )
+        .order(
+          'updated_at',
+          {
+            ascending: false,
+          }
+        ),
 
-    if (reactionError) {
+      supabase
+        .from('card_favorites')
+        .select(`
+          card_id,
+          created_at
+        `)
+        .eq(
+          'user_id',
+          user.id
+        )
+        .order(
+          'created_at',
+          {
+            ascending: false,
+          }
+        ),
+
+      supabase
+        .from('card_dismissals')
+        .select(`
+          card_id
+        `)
+        .eq(
+          'user_id',
+          user.id
+        ),
+    ])
+
+    if (
+      reactionsResult.error
+    ) {
       console.error(
         'Could not load reactions:',
-        reactionError.message
+        reactionsResult.error
+          .message
+      )
+    }
+
+    if (
+      favoritesResult.error
+    ) {
+      console.error(
+        'Could not load favorites:',
+        favoritesResult.error
+          .message
+      )
+    }
+
+    if (
+      dismissalsResult.error
+    ) {
+      console.error(
+        'Could not load dismissals:',
+        dismissalsResult.error
+          .message
       )
     }
 
     const reactions =
-      (reactionData ??
+      (reactionsResult.data ??
         []) as ReactionRow[]
+
+    const favorites =
+      (favoritesResult.data ??
+        []) as FavoriteRow[]
+
+    const dismissals =
+      (dismissalsResult.data ??
+        []) as DismissalRow[]
 
     const reactedCardIds =
       reactions.map(
@@ -95,18 +169,39 @@ export default async function HomePage() {
           reaction.card_id
       )
 
+    const favoriteCardIds =
+      favorites.map(
+        (favorite) =>
+          favorite.card_id
+      )
+
+    const dismissedCardIds =
+      dismissals.map(
+        (dismissal) =>
+          dismissal.card_id
+      )
+
     /*
-     * Load cards the user has
-     * already rated so we can:
+     * Load every card we've learned
+     * something about.
      *
-     * 1. Show recent Loves
-     * 2. Learn which sets they like
+     * Favorites are included even if
+     * an older favorite somehow has no
+     * card_reactions row.
      */
-    let reactedCards:
+    const signalCardIds =
+      Array.from(
+        new Set([
+          ...reactedCardIds,
+          ...favoriteCardIds,
+        ])
+      )
+
+    let signalCards:
       CardRecord[] = []
 
     if (
-      reactedCardIds.length > 0
+      signalCardIds.length > 0
     ) {
       const {
         data,
@@ -132,24 +227,24 @@ export default async function HomePage() {
         )
         .in(
           'id',
-          reactedCardIds
+          signalCardIds
         )
 
       if (error) {
         console.error(
-          'Could not load reacted cards:',
+          'Could not load personalized cards:',
           error.message
         )
       }
 
-      reactedCards =
+      signalCards =
         (data ??
           []) as CardRecord[]
     }
 
-    const reactedCardById =
+    const signalCardById =
       new Map(
-        reactedCards.map(
+        signalCards.map(
           (card) => [
             card.id,
             card,
@@ -158,19 +253,52 @@ export default async function HomePage() {
       )
 
     /*
-     * Preserve reaction order so
-     * newest Loves appear first.
+     * YOUR LOVES
+     *
+     * card_favorites is the source
+     * of truth for the binder.
      */
     lovedCards =
+      favorites
+        .map(
+          (favorite) =>
+            signalCardById.get(
+              favorite.card_id
+            )
+        )
+        .filter(
+          (
+            card
+          ): card is CardRecord =>
+            card !== undefined
+        )
+        .slice(
+          0,
+          40
+        )
+
+    /*
+     * Preferred sets.
+     *
+     * Favorites/Loves are strongest.
+     * Likes come second.
+     */
+    const lovedSetIds =
+      lovedCards.map(
+        (card) =>
+          card.set_id
+      )
+
+    const likedSetIds =
       reactions
         .filter(
           (reaction) =>
             reaction.reaction ===
-            'love'
+            'like'
         )
         .map(
           (reaction) =>
-            reactedCardById.get(
+            signalCardById.get(
               reaction.card_id
             )
         )
@@ -180,71 +308,52 @@ export default async function HomePage() {
           ): card is CardRecord =>
             card !== undefined
         )
-        .slice(0, 20)
+        .map(
+          (card) =>
+            card.set_id
+        )
 
-    /*
-     * Determine which sets the user
-     * has shown interest in.
-     *
-     * Love gets priority because those
-     * cards are the strongest signal.
-     */
-    const preferredSetIds =
-      Array.from(
-        new Set(
-          reactions
-            .map(
-              (reaction) => ({
-                ...reaction,
-                card:
-                  reactedCardById.get(
-                    reaction.card_id
-                  ),
-              })
-            )
-            .filter(
-              (item) =>
-                item.card !==
-                undefined
-            )
-            .sort(
-              (a, b) => {
-                if (
-                  a.reaction ===
-                    'love' &&
-                  b.reaction !==
-                    'love'
-                ) {
-                  return -1
-                }
-
-                if (
-                  b.reaction ===
-                    'love' &&
-                  a.reaction !==
-                    'love'
-                ) {
-                  return 1
-                }
-
-                return 0
-              }
-            )
-            .map(
-              (item) =>
-                item.card!.set_id
+    const reactionLoveSetIds =
+      reactions
+        .filter(
+          (reaction) =>
+            reaction.reaction ===
+            'love'
+        )
+        .map(
+          (reaction) =>
+            signalCardById.get(
+              reaction.card_id
             )
         )
+        .filter(
+          (
+            card
+          ): card is CardRecord =>
+            card !== undefined
+        )
+        .map(
+          (card) =>
+            card.set_id
+        )
+
+    const preferredSetIds =
+      Array.from(
+        new Set([
+          ...lovedSetIds,
+          ...reactionLoveSetIds,
+          ...likedSetIds,
+        ])
+      ).slice(
+        0,
+        8
       )
-        .slice(0, 6)
 
     /*
-     * First recommendation system:
+     * FOR YOU
      *
-     * "You liked Pokémon from these
-     * sets, so here are more Pokémon
-     * from those sets that you haven't
-     * rated yet."
+     * More Pokémon from sets the user
+     * has shown interest in.
      */
     if (
       preferredSetIds.length > 0
@@ -275,7 +384,7 @@ export default async function HomePage() {
           'set_id',
           preferredSetIds
         )
-        .limit(100)
+        .limit(150)
 
       if (error) {
         console.error(
@@ -284,10 +393,12 @@ export default async function HomePage() {
         )
       }
 
-      const reactedIds =
-        new Set(
-          reactedCardIds
-        )
+      const hiddenIds =
+        new Set([
+          ...reactedCardIds,
+          ...favoriteCardIds,
+          ...dismissedCardIds,
+        ])
 
       recommendedCards =
         (
@@ -296,11 +407,14 @@ export default async function HomePage() {
         )
           .filter(
             (card) =>
-              !reactedIds.has(
+              !hiddenIds.has(
                 card.id
               )
           )
-          .slice(0, 30)
+          .slice(
+            0,
+            40
+          )
     }
   }
 
@@ -335,7 +449,8 @@ export default async function HomePage() {
 
   const listIds =
     lists.map(
-      (list) => list.id
+      (list) =>
+        list.id
     )
 
   let listCards:
@@ -466,8 +581,7 @@ export default async function HomePage() {
               (
                 card
               ): card is CardRecord =>
-                card !==
-                undefined
+                card !== undefined
             )
 
         return {

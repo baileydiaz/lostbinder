@@ -38,3 +38,12 @@ select {
 button {
   touch-action: manipulation;
 }
+
+/* Hide scrollbars while keeping scrolling enabled */
+* {
+  scrollbar-width: none;
+}
+
+*::-webkit-scrollbar {
+  display: none;
+}
