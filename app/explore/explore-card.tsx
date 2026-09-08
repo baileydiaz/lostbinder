@@ -2,8 +2,10 @@
 
 import Link from 'next/link'
 import {
+  useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react'
 
@@ -46,15 +48,20 @@ type SetRow = {
 type Props = {
   cards: Card[]
   userId: string | null
+
   initialReactions: Record<
     string,
     'like' | 'love'
   >
+
   initialDismissedCardIds: string[]
+
   initialOffset: number
 }
 
 const BATCH_SIZE = 50
+
+const PREFETCH_THRESHOLD = 10
 
 export default function ExploreCard({
   cards: initialCards,
@@ -64,15 +71,16 @@ export default function ExploreCard({
   initialOffset,
 }: Props) {
   const [cards, setCards] =
-    useState<Card[]>(initialCards)
-
-  const [index, setIndex] =
-    useState(0)
-
-  const [reactions, setReactions] =
-    useState<Record<string, Reaction>>(
-      initialReactions
+    useState<Card[]>(
+      initialCards
     )
+
+  const [
+    reactions,
+    setReactions,
+  ] = useState<
+    Record<string, Reaction>
+  >(initialReactions)
 
   const [
     dismissedCardIds,
@@ -91,31 +99,56 @@ export default function ExploreCard({
     () => new Set()
   )
 
-  const [offset, setOffset] =
-    useState(initialOffset)
+  const [
+    offset,
+    setOffset,
+  ] = useState(initialOffset)
+
+  const offsetRef =
+    useRef(initialOffset)
+
+  const loadingRef =
+    useRef(false)
+
+  const hasMoreRef =
+    useRef(true)
 
   const [
     loadingMore,
     setLoadingMore,
   ] = useState(false)
 
-  const [hasMore, setHasMore] =
-    useState(true)
+  const [
+    hasMore,
+    setHasMore,
+  ] = useState(true)
 
-  const [error, setError] =
-    useState('')
+  const [
+    error,
+    setError,
+  ] = useState('')
 
+  /*
+   * Only cards the user has never
+   * interacted with are eligible.
+   */
   const visibleCards =
     useMemo(
       () =>
         cards.filter(
           (card) =>
-            Boolean(card.image_url) &&
-            !badCardIds.has(card.id) &&
+            Boolean(
+              card.image_url
+            ) &&
+            !badCardIds.has(
+              card.id
+            ) &&
             !dismissedCardIds.has(
               card.id
             ) &&
-            !reactions[card.id]
+            !reactions[
+              card.id
+            ]
         ),
       [
         cards,
@@ -125,232 +158,277 @@ export default function ExploreCard({
       ]
     )
 
+  /*
+   * Discover always displays the
+   * first eligible card.
+   *
+   * There is intentionally no
+   * currentIndex anymore.
+   */
   const card =
-    visibleCards[index]
+    visibleCards[0]
 
-  async function loadMoreCards() {
-    if (
-      loadingMore ||
-      !hasMore
-    ) {
-      return
-    }
-
-    setLoadingMore(true)
-    setError('')
-
-    const supabase =
-      createClient()
-
-    const {
-      data,
-      error: cardError,
-    } = await supabase
-      .from('cards')
-      .select(`
-        id,
-        local_id,
-        name,
-        rarity,
-        illustrator,
-        image_url,
-        set_id,
-        category
-      `)
-      .eq(
-        'category',
-        'Pokemon'
-      )
-      .not(
-        'image_url',
-        'is',
-        null
-      )
-      .order(
-        'id',
-        {
-          ascending: true,
+  const loadMoreCards =
+    useCallback(
+      async () => {
+        if (
+          loadingRef.current ||
+          !hasMoreRef.current
+        ) {
+          return
         }
-      )
-      .range(
-        offset,
-        offset +
-          BATCH_SIZE -
-          1
-      )
 
-    if (cardError) {
-      setError(
-        cardError.message
-      )
+        loadingRef.current =
+          true
 
-      setLoadingMore(false)
-      return
-    }
+        setLoadingMore(true)
+        setError('')
 
-    const newCards =
-      (data ??
-        []) as CardRecord[]
+        const currentOffset =
+          offsetRef.current
 
-    if (
-      newCards.length === 0
-    ) {
-      setHasMore(false)
-      setLoadingMore(false)
-      return
-    }
+        const supabase =
+          createClient()
 
-    const setIds =
-      Array.from(
-        new Set(
-          newCards.map(
-            (newCard) =>
-              newCard.set_id
+        const {
+          data,
+          error:
+            cardError,
+        } = await supabase
+          .from('cards')
+          .select(`
+            id,
+            local_id,
+            name,
+            rarity,
+            illustrator,
+            image_url,
+            set_id,
+            category
+          `)
+          .eq(
+            'category',
+            'Pokemon'
           )
+          .not(
+            'image_url',
+            'is',
+            null
+          )
+          .order(
+            'id',
+            {
+              ascending: true,
+            }
+          )
+          .range(
+            currentOffset,
+            currentOffset +
+              BATCH_SIZE -
+              1
+          )
+
+        if (cardError) {
+          setError(
+            cardError.message
+          )
+
+          loadingRef.current =
+            false
+
+          setLoadingMore(false)
+
+          return
+        }
+
+        const newCards =
+          (data ??
+            []) as CardRecord[]
+
+        if (
+          newCards.length === 0
+        ) {
+          hasMoreRef.current =
+            false
+
+          setHasMore(false)
+
+          loadingRef.current =
+            false
+
+          setLoadingMore(false)
+
+          return
+        }
+
+        /*
+         * Advance the database cursor
+         * immediately so another fetch
+         * cannot request this same
+         * batch.
+         */
+        const nextOffset =
+          currentOffset +
+          newCards.length
+
+        offsetRef.current =
+          nextOffset
+
+        setOffset(
+          nextOffset
         )
-      )
 
-    let sets: SetRow[] = []
+        if (
+          newCards.length <
+          BATCH_SIZE
+        ) {
+          hasMoreRef.current =
+            false
 
-    if (
-      setIds.length > 0
-    ) {
-      const {
-        data: setData,
-        error: setError,
-      } = await supabase
-        .from('sets')
-        .select(`
-          id,
-          name
-        `)
-        .in(
-          'id',
-          setIds
-        )
+          setHasMore(false)
+        }
 
-      if (setError) {
-        console.error(
-          'Could not load sets:',
-          setError.message
-        )
-      }
-
-      sets =
-        (setData ??
-          []) as SetRow[]
-    }
-
-    const setNameById =
-      new Map(
-        sets.map(
-          (set) => [
-            set.id,
-            set.name,
-          ]
-        )
-      )
-
-    const hydratedCards:
-      Card[] =
-      newCards.map(
-        (newCard) => ({
-          ...newCard,
-
-          set_name:
-            setNameById.get(
-              newCard.set_id
-            ) ??
-            newCard.set_id,
-        })
-      )
-
-    setCards(
-      (current) => {
-        const existingIds =
-          new Set(
-            current.map(
-              (currentCard) =>
-                currentCard.id
+        const setIds =
+          Array.from(
+            new Set(
+              newCards.map(
+                (
+                  newCard
+                ) =>
+                  newCard.set_id
+              )
             )
           )
 
-        const uniqueNewCards =
-          hydratedCards.filter(
-            (newCard) =>
-              !existingIds.has(
-                newCard.id
+        let sets:
+          SetRow[] = []
+
+        if (
+          setIds.length > 0
+        ) {
+          const {
+            data:
+              setData,
+            error:
+              setError,
+          } =
+            await supabase
+              .from(
+                'sets'
               )
+              .select(`
+                id,
+                name
+              `)
+              .in(
+                'id',
+                setIds
+              )
+
+          if (
+            setError
+          ) {
+            console.error(
+              'Could not load sets:',
+              setError.message
+            )
+          }
+
+          sets =
+            (setData ??
+              []) as SetRow[]
+        }
+
+        const setNameById =
+          new Map(
+            sets.map(
+              (set) => [
+                set.id,
+                set.name,
+              ]
+            )
           )
 
-        return [
-          ...current,
-          ...uniqueNewCards,
-        ]
-      }
+        const hydratedCards:
+          Card[] =
+          newCards.map(
+            (
+              newCard
+            ) => ({
+              ...newCard,
+
+              set_name:
+                setNameById.get(
+                  newCard.set_id
+                ) ??
+                newCard.set_id,
+            })
+          )
+
+        setCards(
+          (current) => {
+            const existingIds =
+              new Set(
+                current.map(
+                  (
+                    currentCard
+                  ) =>
+                    currentCard.id
+                )
+              )
+
+            const uniqueNewCards =
+              hydratedCards.filter(
+                (
+                  newCard
+                ) =>
+                  !existingIds.has(
+                    newCard.id
+                  )
+              )
+
+            return [
+              ...current,
+              ...uniqueNewCards,
+            ]
+          }
+        )
+
+        loadingRef.current =
+          false
+
+        setLoadingMore(false)
+      },
+      []
     )
-
-    setOffset(
-      (current) =>
-        current +
-        newCards.length
-    )
-
-    if (
-      newCards.length <
-      BATCH_SIZE
-    ) {
-      setHasMore(false)
-    }
-
-    setLoadingMore(false)
-  }
 
   /*
-   * If the current batch contains
-   * nothing the user hasn't already
-   * rated/dismissed, automatically
-   * keep searching through the DB.
+   * Keep the queue full.
+   *
+   * If we have fewer than 10 usable
+   * cards remaining, quietly fetch
+   * another batch.
+   *
+   * If a batch contains nothing usable,
+   * visibleCards remains low, causing
+   * this effect to continue searching
+   * through the DB.
    */
   useEffect(() => {
     if (
-      !card &&
+      visibleCards.length <=
+        PREFETCH_THRESHOLD &&
       hasMore &&
       !loadingMore
     ) {
       void loadMoreCards()
     }
   }, [
-    card,
+    visibleCards.length,
     hasMore,
     loadingMore,
+    loadMoreCards,
   ])
-
-  /*
-   * When we're getting near the
-   * end of the usable cards we've
-   * already loaded, preload another
-   * batch in the background.
-   */
-  function maybeLoadMore() {
-    if (
-      visibleCards.length -
-        index <=
-      10
-    ) {
-      void loadMoreCards()
-    }
-  }
-
-  function previousCard() {
-    setIndex(
-      (current) =>
-        Math.max(
-          0,
-          current - 1
-        )
-    )
-  }
 
   async function dismissCard() {
     if (!card) {
@@ -361,30 +439,31 @@ export default function ExploreCard({
       card.id
 
     /*
-     * Hide it immediately.
+     * Immediately remove the current
+     * card from the visible queue.
      *
-     * We intentionally do NOT
-     * increment index because once
-     * this card disappears, the next
-     * card moves into this position.
+     * The next eligible card becomes
+     * visibleCards[0].
      */
     setDismissedCardIds(
       (current) => {
         const next =
-          new Set(current)
+          new Set(
+            current
+          )
 
-        next.add(cardId)
+        next.add(
+          cardId
+        )
 
         return next
       }
     )
 
-    maybeLoadMore()
-
     /*
-     * Logged-out users can still
-     * pass cards during this session,
-     * but we can't persist that choice.
+     * Logged-out visitors can pass
+     * cards for this session, but the
+     * choice cannot be persisted.
      */
     if (!userId) {
       return
@@ -404,6 +483,7 @@ export default function ExploreCard({
         {
           user_id:
             userId,
+
           card_id:
             cardId,
         },
@@ -422,15 +502,19 @@ export default function ExploreCard({
       )
 
       /*
-       * Restore the card if saving
-       * the dismissal failed.
+       * Put the card back if the
+       * database write failed.
        */
       setDismissedCardIds(
         (current) => {
           const next =
-            new Set(current)
+            new Set(
+              current
+            )
 
-          next.delete(cardId)
+          next.delete(
+            cardId
+          )
 
           return next
         }
@@ -448,22 +532,25 @@ export default function ExploreCard({
     setBadCardIds(
       (current) => {
         const next =
-          new Set(current)
+          new Set(
+            current
+          )
 
-        next.add(cardId)
+        next.add(
+          cardId
+        )
 
         return next
       }
     )
-
-    maybeLoadMore()
   }
 
   /*
-   * We're between batches.
+   * There is temporarily no eligible
+   * card, but there are still database
+   * batches available.
    *
-   * The useEffect above will
-   * automatically fetch more.
+   * Keep searching invisibly.
    */
   if (
     !card &&
@@ -474,7 +561,7 @@ export default function ExploreCard({
         <div className="mx-auto h-6 w-6 animate-spin rounded-full border-2 border-zinc-800 border-t-white" />
 
         <p className="mt-4 text-sm text-zinc-500">
-          Finding more Pokémon...
+          Finding your next Pokémon...
         </p>
 
         {error ? (
@@ -487,9 +574,9 @@ export default function ExploreCard({
   }
 
   /*
-   * No card + no more database
-   * batches means they've actually
-   * reached the end.
+   * No eligible cards and we've
+   * actually reached the end of the
+   * Pokémon database.
    */
   if (!card) {
     return (
@@ -533,7 +620,9 @@ export default function ExploreCard({
             className="flex aspect-[2.5/3.5] w-full items-center justify-center overflow-hidden bg-zinc-950"
           >
             <img
-              key={card.id}
+              key={
+                card.id
+              }
               src={
                 card.image_url!
               }
@@ -572,6 +661,9 @@ export default function ExploreCard({
 
             <div className="mt-4">
               <ReactionButtons
+                key={
+                  card.id
+                }
                 cardId={
                   card.id
                 }
@@ -584,28 +676,25 @@ export default function ExploreCard({
                 onSaved={(
                   nextReaction
                 ) => {
-                  /*
-                   * Like/Love removes the
-                   * card from Discover.
-                   *
-                   * Just like dismissing,
-                   * the next card moves
-                   * naturally into the
-                   * same index.
-                   */
                   if (
                     nextReaction
                   ) {
+                    /*
+                     * Remove this card from
+                     * the queue. The next
+                     * eligible card becomes
+                     * visibleCards[0].
+                     */
                     setReactions(
-                      (current) => ({
+                      (
+                        current
+                      ) => ({
                         ...current,
 
                         [card.id]:
                           nextReaction,
                       })
                     )
-
-                    maybeLoadMore()
                   }
                 }}
               />
@@ -620,18 +709,6 @@ export default function ExploreCard({
             >
               ✕ Don&apos;t Like
             </button>
-
-            {index > 0 ? (
-              <button
-                type="button"
-                onClick={
-                  previousCard
-                }
-                className="mt-3 w-full text-center text-xs text-zinc-700 transition hover:text-zinc-400"
-              >
-                ← Previous
-              </button>
-            ) : null}
 
             {error ? (
               <p className="mt-3 text-center text-xs text-red-400">
