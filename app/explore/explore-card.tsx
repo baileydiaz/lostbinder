@@ -60,8 +60,38 @@ type Props = {
 }
 
 const BATCH_SIZE = 50
-
 const PREFETCH_THRESHOLD = 10
+
+function shuffleCards<T>(
+  items: T[]
+) {
+  const shuffled = [
+    ...items,
+  ]
+
+  for (
+    let i =
+      shuffled.length - 1;
+    i > 0;
+    i--
+  ) {
+    const j =
+      Math.floor(
+        Math.random() *
+          (i + 1)
+      )
+
+    ;[
+      shuffled[i],
+      shuffled[j],
+    ] = [
+      shuffled[j],
+      shuffled[i],
+    ]
+  }
+
+  return shuffled
+}
 
 export default function ExploreCard({
   cards: initialCards,
@@ -70,10 +100,15 @@ export default function ExploreCard({
   initialDismissedCardIds,
   initialOffset,
 }: Props) {
-  const [cards, setCards] =
-    useState<Card[]>(
-      initialCards
-    )
+  const [
+    cards,
+    setCards,
+  ] = useState<Card[]>(
+    () =>
+      shuffleCards(
+        initialCards
+      )
+  )
 
   const [
     reactions,
@@ -99,19 +134,20 @@ export default function ExploreCard({
     () => new Set()
   )
 
+  /*
+   * The ID of the card whose image
+   * has successfully loaded.
+   *
+   * Until this matches the current
+   * card, we only show the loading
+   * screen.
+   */
   const [
-    offset,
-    setOffset,
-  ] = useState(initialOffset)
-
-  const offsetRef =
-    useRef(initialOffset)
-
-  const loadingRef =
-    useRef(false)
-
-  const hasMoreRef =
-    useRef(true)
+    loadedImageCardId,
+    setLoadedImageCardId,
+  ] = useState<
+    string | null
+  >(null)
 
   const [
     loadingMore,
@@ -128,9 +164,18 @@ export default function ExploreCard({
     setError,
   ] = useState('')
 
+  const offsetRef =
+    useRef(initialOffset)
+
+  const loadingRef =
+    useRef(false)
+
+  const hasMoreRef =
+    useRef(true)
+
   /*
-   * Only cards the user has never
-   * interacted with are eligible.
+   * Remove everything the user has
+   * already handled.
    */
   const visibleCards =
     useMemo(
@@ -159,14 +204,20 @@ export default function ExploreCard({
     )
 
   /*
-   * Discover always displays the
-   * first eligible card.
+   * Discover is a queue.
    *
-   * There is intentionally no
-   * currentIndex anymore.
+   * Always work on the first
+   * eligible card.
    */
   const card =
     visibleCards[0]
+
+  const imageReady =
+    Boolean(
+      card &&
+        loadedImageCardId ===
+          card.id
+    )
 
   const loadMoreCards =
     useCallback(
@@ -262,21 +313,13 @@ export default function ExploreCard({
         }
 
         /*
-         * Advance the database cursor
-         * immediately so another fetch
-         * cannot request this same
-         * batch.
+         * Move the database cursor
+         * forward before doing
+         * anything else.
          */
-        const nextOffset =
+        offsetRef.current =
           currentOffset +
           newCards.length
-
-        offsetRef.current =
-          nextOffset
-
-        setOffset(
-          nextOffset
-        )
 
         if (
           newCards.length <
@@ -365,6 +408,16 @@ export default function ExploreCard({
             })
           )
 
+        /*
+         * Randomize each incoming
+         * batch before adding it to
+         * the Discover queue.
+         */
+        const shuffledCards =
+          shuffleCards(
+            hydratedCards
+          )
+
         setCards(
           (current) => {
             const existingIds =
@@ -377,8 +430,8 @@ export default function ExploreCard({
                 )
               )
 
-            const uniqueNewCards =
-              hydratedCards.filter(
+            const uniqueCards =
+              shuffledCards.filter(
                 (
                   newCard
                 ) =>
@@ -389,7 +442,7 @@ export default function ExploreCard({
 
             return [
               ...current,
-              ...uniqueNewCards,
+              ...uniqueCards,
             ]
           }
         )
@@ -403,16 +456,12 @@ export default function ExploreCard({
     )
 
   /*
-   * Keep the queue full.
+   * Keep filling the queue.
    *
-   * If we have fewer than 10 usable
-   * cards remaining, quietly fetch
-   * another batch.
-   *
-   * If a batch contains nothing usable,
-   * visibleCards remains low, causing
-   * this effect to continue searching
-   * through the DB.
+   * If entire batches contain cards
+   * already seen by the user, this
+   * can continue searching in the
+   * background.
    */
   useEffect(() => {
     if (
@@ -430,6 +479,30 @@ export default function ExploreCard({
     loadMoreCards,
   ])
 
+  /*
+   * Whenever we move to a different
+   * candidate card, it is NOT ready
+   * until that exact image fires
+   * onLoad.
+   *
+   * This is what prevents broken
+   * McDonald's cards from flashing.
+   */
+  useEffect(() => {
+    if (
+      !card ||
+      loadedImageCardId !==
+        card.id
+    ) {
+      setLoadedImageCardId(
+        null
+      )
+    }
+  }, [
+    card,
+    loadedImageCardId,
+  ])
+
   async function dismissCard() {
     if (!card) {
       return
@@ -438,13 +511,10 @@ export default function ExploreCard({
     const cardId =
       card.id
 
-    /*
-     * Immediately remove the current
-     * card from the visible queue.
-     *
-     * The next eligible card becomes
-     * visibleCards[0].
-     */
+    setLoadedImageCardId(
+      null
+    )
+
     setDismissedCardIds(
       (current) => {
         const next =
@@ -460,11 +530,6 @@ export default function ExploreCard({
       }
     )
 
-    /*
-     * Logged-out visitors can pass
-     * cards for this session, but the
-     * choice cannot be persisted.
-     */
     if (!userId) {
       return
     }
@@ -501,10 +566,6 @@ export default function ExploreCard({
         dismissalError.message
       )
 
-      /*
-       * Put the card back if the
-       * database write failed.
-       */
       setDismissedCardIds(
         (current) => {
           const next =
@@ -529,6 +590,14 @@ export default function ExploreCard({
   function removeBrokenCard(
     cardId: string
   ) {
+    /*
+     * Never allow the broken image
+     * to become the displayed card.
+     */
+    setLoadedImageCardId(
+      null
+    )
+
     setBadCardIds(
       (current) => {
         const next =
@@ -546,11 +615,9 @@ export default function ExploreCard({
   }
 
   /*
-   * There is temporarily no eligible
-   * card, but there are still database
-   * batches available.
-   *
-   * Keep searching invisibly.
+   * We ran out of eligible cards
+   * but there are still more rows
+   * in the database.
    */
   if (
     !card &&
@@ -558,7 +625,7 @@ export default function ExploreCard({
   ) {
     return (
       <div className="py-20 text-center">
-        <div className="mx-auto h-6 w-6 animate-spin rounded-full border-2 border-zinc-800 border-t-white" />
+        <div className="mx-auto h-7 w-7 animate-spin rounded-full border-2 border-zinc-800 border-t-white" />
 
         <p className="mt-4 text-sm text-zinc-500">
           Finding your next Pokémon...
@@ -574,9 +641,7 @@ export default function ExploreCard({
   }
 
   /*
-   * No eligible cards and we've
-   * actually reached the end of the
-   * Pokémon database.
+   * Actually reached the end.
    */
   if (!card) {
     return (
@@ -614,10 +679,21 @@ export default function ExploreCard({
           ) : null}
         </div>
 
-        <div className="overflow-hidden rounded-[28px] border border-white/10 bg-zinc-950 shadow-2xl">
+        <div className="relative overflow-hidden rounded-[28px] border border-white/10 bg-zinc-950 shadow-2xl">
+          {/*
+            The image is mounted immediately
+            so the browser can test it.
+
+            But it stays invisible until
+            onLoad succeeds.
+          */}
           <Link
             href={`/cards/${card.id}`}
-            className="flex aspect-[2.5/3.5] w-full items-center justify-center overflow-hidden bg-zinc-950"
+            className={`flex aspect-[2.5/3.5] w-full items-center justify-center overflow-hidden bg-zinc-950 ${
+              imageReady
+                ? ''
+                : 'pointer-events-none'
+            }`}
           >
             <img
               key={
@@ -629,93 +705,119 @@ export default function ExploreCard({
               alt={
                 card.name
               }
-              onError={() =>
+              onLoad={() => {
+                setLoadedImageCardId(
+                  card.id
+                )
+              }}
+              onError={() => {
                 removeBrokenCard(
                   card.id
                 )
-              }
-              className="h-full w-full object-contain"
+              }}
+              className={`h-full w-full object-contain transition-opacity duration-150 ${
+                imageReady
+                  ? 'opacity-100'
+                  : 'opacity-0'
+              }`}
             />
           </Link>
 
-          <div className="p-4">
-            <p className="truncate text-xs text-zinc-500">
-              {card.set_name}
-            </p>
+          {/*
+            Nothing from the candidate
+            card is exposed until its
+            image is confirmed good.
+          */}
+          {!imageReady ? (
+            <div className="absolute inset-0 flex items-center justify-center bg-zinc-950">
+              <div className="text-center">
+                <div className="mx-auto h-7 w-7 animate-spin rounded-full border-2 border-zinc-800 border-t-white" />
 
-            <h2 className="mt-1 truncate text-xl font-semibold tracking-tight">
-              {card.name}
-            </h2>
-
-            <p className="mt-1 truncate text-xs text-zinc-500">
-              {card.rarity &&
-              card.rarity !==
-                'None'
-                ? card.rarity
-                : 'Pokémon card'}
-
-              {card.illustrator
-                ? ` · ${card.illustrator}`
-                : ''}
-            </p>
-
-            <div className="mt-4">
-              <ReactionButtons
-                key={
-                  card.id
-                }
-                cardId={
-                  card.id
-                }
-                userId={
-                  userId
-                }
-                initialReaction={
-                  currentReaction
-                }
-                onSaved={(
-                  nextReaction
-                ) => {
-                  if (
-                    nextReaction
-                  ) {
-                    /*
-                     * Remove this card from
-                     * the queue. The next
-                     * eligible card becomes
-                     * visibleCards[0].
-                     */
-                    setReactions(
-                      (
-                        current
-                      ) => ({
-                        ...current,
-
-                        [card.id]:
-                          nextReaction,
-                      })
-                    )
-                  }
-                }}
-              />
+                <p className="mt-4 text-xs text-zinc-600">
+                  Finding your next Pokémon...
+                </p>
+              </div>
             </div>
+          ) : null}
 
-            <button
-              type="button"
-              onClick={() =>
-                void dismissCard()
-              }
-              className="mt-3 w-full rounded-full border border-white/10 py-2.5 text-sm text-zinc-500 transition hover:border-white/25 hover:text-white"
-            >
-              ✕ Don&apos;t Like
-            </button>
-
-            {error ? (
-              <p className="mt-3 text-center text-xs text-red-400">
-                {error}
+          {imageReady ? (
+            <div className="p-4">
+              <p className="truncate text-xs text-zinc-500">
+                {card.set_name}
               </p>
-            ) : null}
-          </div>
+
+              <h2 className="mt-1 truncate text-xl font-semibold tracking-tight">
+                {card.name}
+              </h2>
+
+              <p className="mt-1 truncate text-xs text-zinc-500">
+                {card.rarity &&
+                card.rarity !==
+                  'None'
+                  ? card.rarity
+                  : 'Pokémon card'}
+
+                {card.illustrator
+                  ? ` · ${card.illustrator}`
+                  : ''}
+              </p>
+
+              <div className="mt-4">
+                <ReactionButtons
+                  key={
+                    card.id
+                  }
+                  cardId={
+                    card.id
+                  }
+                  userId={
+                    userId
+                  }
+                  initialReaction={
+                    currentReaction
+                  }
+                  onSaved={(
+                    nextReaction
+                  ) => {
+                    if (
+                      nextReaction
+                    ) {
+                      setLoadedImageCardId(
+                        null
+                      )
+
+                      setReactions(
+                        (
+                          current
+                        ) => ({
+                          ...current,
+
+                          [card.id]:
+                            nextReaction,
+                        })
+                      )
+                    }
+                  }}
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={() =>
+                  void dismissCard()
+                }
+                className="mt-3 w-full rounded-full border border-white/10 py-2.5 text-sm text-zinc-500 transition hover:border-white/25 hover:text-white"
+              >
+                ✕ Don&apos;t Like
+              </button>
+
+              {error ? (
+                <p className="mt-3 text-center text-xs text-red-400">
+                  {error}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       </div>
     </div>
