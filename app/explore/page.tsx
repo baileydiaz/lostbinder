@@ -1,8 +1,8 @@
-import {
-  createClient,
-} from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 
 import ExploreCard from './explore-card'
+
+export const dynamic = 'force-dynamic'
 
 type CardRecord = {
   id: string
@@ -24,35 +24,23 @@ type ExploreCardType = CardRecord & {
   set_name: string
 }
 
-function shuffle<T>(items: T[]) {
-  const result = [...items]
-
-  for (
-    let i = result.length - 1;
-    i > 0;
-    i--
-  ) {
-    const j = Math.floor(
-      Math.random() * (i + 1)
-    )
-
-    ;[result[i], result[j]] = [
-      result[j],
-      result[i],
-    ]
-  }
-
-  return result
+type ReactionRow = {
+  card_id: string
+  reaction: 'like' | 'love'
 }
 
+type DismissalRow = {
+  card_id: string
+}
+
+const INITIAL_BATCH_SIZE = 50
+
 export default async function ExplorePage() {
-  const supabase =
-    await createClient()
+  const supabase = await createClient()
 
   const {
     data: { user },
-  } =
-    await supabase.auth.getUser()
+  } = await supabase.auth.getUser()
 
   const {
     data: cardsData,
@@ -69,184 +57,182 @@ export default async function ExplorePage() {
       set_id,
       category
     `)
-    .not(
-      'image_url',
-      'is',
-      null
+    .eq('category', 'Pokemon')
+    .not('image_url', 'is', null)
+    .order('id', {
+      ascending: true,
+    })
+    .range(
+      0,
+      INITIAL_BATCH_SIZE - 1
     )
-    .limit(200)
 
   if (cardsError) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-black px-6 text-white">
-        <div className="text-center">
-          <h1 className="text-3xl font-semibold">
-            Explore
-          </h1>
-
-          <p className="mt-4 text-red-400">
-            Could not load cards:{' '}
-            {cardsError.message}
-          </p>
-        </div>
-      </main>
+    console.error(
+      'Could not load cards:',
+      cardsError.message
     )
   }
 
   const cards =
-    (cardsData ??
-      []) as CardRecord[]
+    (cardsData ?? []) as CardRecord[]
 
-  const setIds =
-    Array.from(
-      new Set(
-        cards.map(
-          (card) =>
-            card.set_id
-        )
+  const setIds = Array.from(
+    new Set(
+      cards.map(
+        (card) => card.set_id
       )
     )
+  )
 
-  let sets:
-    SetRow[] = []
+  let sets: SetRow[] = []
 
-  if (
-    setIds.length > 0
-  ) {
+  if (setIds.length > 0) {
     const {
-      data: setsData,
-      error: setsError,
+      data,
+      error,
     } = await supabase
       .from('sets')
       .select(`
         id,
         name
       `)
-      .in(
-        'id',
-        setIds
-      )
+      .in('id', setIds)
 
-    if (setsError) {
+    if (error) {
       console.error(
         'Could not load sets:',
-        setsError.message
+        error.message
       )
     }
 
     sets =
-      (setsData ??
-        []) as SetRow[]
+      (data ?? []) as SetRow[]
   }
 
-  const setNameById =
-    new Map(
-      sets.map(
-        (set) => [
-          set.id,
-          set.name,
-        ]
-      )
+  const setNameById = new Map(
+    sets.map(
+      (set) => [
+        set.id,
+        set.name,
+      ]
+    )
+  )
+
+  const exploreCards: ExploreCardType[] =
+    cards.map(
+      (card) => ({
+        ...card,
+        set_name:
+          setNameById.get(
+            card.set_id
+          ) ?? card.set_id,
+      })
     )
 
-  const exploreCards:
-    ExploreCardType[] =
-      shuffle(cards)
-        .slice(0, 50)
-        .map(
-          (card) => ({
-            ...card,
-            set_name:
-              setNameById.get(
-                card.set_id
-              ) ??
-              card.set_id,
-          })
-        )
+  let initialReactions: Record<
+    string,
+    'like' | 'love'
+  > = {}
 
-  const initialReactions:
-    Record<
-      string,
-      'like' | 'love'
-    > = {}
+  let dismissedCardIds: string[] = []
 
-  if (
-    user &&
-    exploreCards.length >
-      0
-  ) {
-    const cardIds =
-      exploreCards.map(
-        (card) =>
-          card.id
-      )
+  if (user) {
+    const [
+      reactionResult,
+      dismissalResult,
+    ] = await Promise.all([
+      supabase
+        .from('card_reactions')
+        .select(`
+          card_id,
+          reaction
+        `)
+        .eq(
+          'user_id',
+          user.id
+        ),
 
-    const {
-      data:
-        reactionData,
-      error:
-        reactionError,
-    } = await supabase
-      .from(
-        'card_reactions'
-      )
-      .select(`
-        card_id,
-        reaction
-      `)
-      .eq(
-        'user_id',
-        user.id
-      )
-      .in(
-        'card_id',
-        cardIds
-      )
+      supabase
+        .from('card_dismissals')
+        .select('card_id')
+        .eq(
+          'user_id',
+          user.id
+        ),
+    ])
 
-    if (
-      reactionError
-    ) {
+    if (reactionResult.error) {
       console.error(
         'Could not load reactions:',
-        reactionError.message
+        reactionResult.error.message
       )
     }
 
-    for (
-      const row of
-        reactionData ??
-        []
-    ) {
-      if (
-        row.reaction ===
-          'like' ||
-        row.reaction ===
-          'love'
-      ) {
-        initialReactions[
-          row.card_id
-        ] =
-          row.reaction
-      }
+    if (dismissalResult.error) {
+      console.error(
+        'Could not load dismissals:',
+        dismissalResult.error.message
+      )
     }
+
+    const reactions =
+      (reactionResult.data ??
+        []) as ReactionRow[]
+
+    initialReactions =
+      Object.fromEntries(
+        reactions.map(
+          (reaction) => [
+            reaction.card_id,
+            reaction.reaction,
+          ]
+        )
+      )
+
+    dismissedCardIds =
+      (
+        (dismissalResult.data ??
+          []) as DismissalRow[]
+      ).map(
+        (dismissal) =>
+          dismissal.card_id
+      )
   }
 
   return (
-    <main className="min-h-screen bg-black text-white">
-      <section className="flex min-h-[calc(100vh-64px)] items-center justify-center px-4 py-6 sm:px-6">
+    <main className="min-h-screen bg-black px-4 py-8 text-white">
+      <div className="mx-auto max-w-5xl">
+        <div className="mb-8 text-center">
+          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-zinc-600">
+            Discover
+          </p>
+
+          <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
+            Find your next favorite.
+          </h1>
+
+          <p className="mt-2 text-sm text-zinc-600">
+            Like, Love, or pass.
+          </p>
+        </div>
+
         <ExploreCard
-          cards={
-            exploreCards
-          }
+          cards={exploreCards}
           userId={
-            user?.id ??
-            null
+            user?.id ?? null
           }
           initialReactions={
             initialReactions
           }
+          initialDismissedCardIds={
+            dismissedCardIds
+          }
+          initialOffset={
+            INITIAL_BATCH_SIZE
+          }
         />
-      </section>
+      </div>
     </main>
   )
 }

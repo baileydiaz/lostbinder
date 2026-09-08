@@ -43,7 +43,7 @@ export default function ReactionButtons({
     next: 'like' | 'love'
   ) {
     if (!userId) {
-      router.push('/login')
+      router.push('/auth/login')
       return
     }
 

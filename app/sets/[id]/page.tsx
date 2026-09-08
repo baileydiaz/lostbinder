@@ -1,11 +1,23 @@
+import Link from 'next/link'
 import { notFound } from 'next/navigation'
+
 import { createClient } from '@/lib/supabase/server'
+
 import FavoriteButton from './favorite-button'
 
 type Props = {
   params: Promise<{
     id: string
   }>
+}
+
+type Card = {
+  id: string
+  local_id: string
+  name: string
+  rarity: string | null
+  illustrator: string | null
+  image_url: string | null
 }
 
 export default async function SetPage({
@@ -15,17 +27,34 @@ export default async function SetPage({
 
   const supabase = await createClient()
 
-  const { data: set } = await supabase
+  const {
+    data: set,
+    error: setError,
+  } = await supabase
     .from('sets')
-    .select('id, name')
+    .select(`
+      id,
+      name,
+      release_date,
+      total_official
+    `)
     .eq('id', id)
     .single()
 
-  if (!set) {
+  if (setError || !set) {
     notFound()
   }
 
-  const { data: cards, error } = await supabase
+  /*
+   * Pokémon ONLY.
+   *
+   * Trainer and Energy cards never
+   * make it out of the database query.
+   */
+  const {
+    data: cards,
+    error: cardsError,
+  } = await supabase
     .from('cards')
     .select(`
       id,
@@ -36,111 +65,192 @@ export default async function SetPage({
       image_url
     `)
     .eq('set_id', id)
+    .eq('category', 'Pokemon')
+    .not('image_url', 'is', null)
     .order('local_id')
 
-  if (error) {
+  if (cardsError) {
     return (
-      <main style={{ padding: '40px' }}>
-        <h1>{set.name}</h1>
-        <p>Could not load cards.</p>
-        <p>{error.message}</p>
+      <main className="min-h-screen bg-black px-5 py-10 text-white">
+        <div className="mx-auto max-w-[1400px]">
+          <h1 className="text-4xl font-semibold">
+            {set.name}
+          </h1>
+
+          <p className="mt-4 text-sm text-red-400">
+            Could not load cards.
+          </p>
+
+          <p className="mt-2 text-xs text-zinc-600">
+            {cardsError.message}
+          </p>
+        </div>
       </main>
     )
   }
+
+  const pokemonCards =
+    (cards ?? []) as Card[]
 
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
-  let favoriteIds = new Set<string>()
+  let favoriteIds =
+    new Set<string>()
 
-  if (user && cards && cards.length > 0) {
-    const cardIds = cards.map((card) => card.id)
+  if (
+    user &&
+    pokemonCards.length > 0
+  ) {
+    const cardIds =
+      pokemonCards.map(
+        (card) => card.id
+      )
 
-    const { data: favorites } = await supabase
+    const {
+      data: favorites,
+      error: favoritesError,
+    } = await supabase
       .from('card_favorites')
       .select('card_id')
       .eq('user_id', user.id)
       .in('card_id', cardIds)
 
-    favoriteIds = new Set(
-      favorites?.map((favorite) => favorite.card_id) ?? []
-    )
+    if (favoritesError) {
+      console.error(
+        'Could not load favorites:',
+        favoritesError.message
+      )
+    }
+
+    favoriteIds =
+      new Set(
+        favorites?.map(
+          (favorite) =>
+            favorite.card_id
+        ) ?? []
+      )
   }
 
+  const releaseYear =
+    set.release_date
+      ? new Date(
+          set.release_date
+        ).getFullYear()
+      : null
+
   return (
-    <main
-      style={{
-        maxWidth: '1400px',
-        margin: '0 auto',
-        padding: '40px 24px',
-      }}
-    >
-      <h1>{set.name}</h1>
+    <main className="min-h-screen bg-black px-5 py-10 text-white sm:px-8">
+      <div className="mx-auto max-w-[1400px]">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-zinc-600">
+            Pokémon Set
+          </p>
 
-      <p style={{ opacity: 0.7 }}>
-        {cards?.length ?? 0} cards
-      </p>
+          <h1 className="mt-2 text-4xl font-semibold tracking-tight sm:text-5xl">
+            {set.name}
+          </h1>
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns:
-            'repeat(auto-fill, minmax(180px, 1fr))',
-          gap: '24px',
-          marginTop: '32px',
-        }}
-      >
-        {cards?.map((card) => (
-          <div key={card.id}>
-            {card.image_url && (
-              <img
-                src={card.image_url}
-                alt={card.name}
-                style={{
-                  width: '100%',
-                  display: 'block',
-                  borderRadius: '12px',
-                }}
-              />
-            )}
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-zinc-500">
+            <span>
+              {pokemonCards.length}{' '}
+              Pokémon
+            </span>
 
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'flex-start',
-                gap: '10px',
-                marginTop: '10px',
-              }}
-            >
-              <div>
-                <strong>{card.name}</strong>
+            {releaseYear ? (
+              <>
+                <span className="text-zinc-800">
+                  •
+                </span>
 
-                <div
-                  style={{
-                    fontSize: '14px',
-                    opacity: 0.65,
-                    marginTop: '3px',
-                  }}
-                >
-                  #{card.local_id}
-                  {card.rarity
-                    ? ` • ${card.rarity}`
-                    : ''}
-                </div>
-              </div>
-
-              <FavoriteButton
-                cardId={card.id}
-                initialFavorite={favoriteIds.has(
-                  card.id
-                )}
-                loggedIn={Boolean(user)}
-              />
-            </div>
+                <span>
+                  {releaseYear}
+                </span>
+              </>
+            ) : null}
           </div>
-        ))}
+        </div>
+
+        {pokemonCards.length === 0 ? (
+          <div className="mt-12 rounded-3xl border border-white/10 bg-zinc-950 px-6 py-16 text-center">
+            <h2 className="text-xl font-semibold">
+              No Pokémon found.
+            </h2>
+
+            <p className="mt-2 text-sm text-zinc-600">
+              There aren&apos;t any Pokémon cards
+              available for this set yet.
+            </p>
+          </div>
+        ) : (
+          <div className="mt-10 grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+            {pokemonCards.map(
+              (card) => (
+                <div
+                  key={card.id}
+                  className="min-w-0"
+                >
+                  <Link
+                    href={`/cards/${card.id}`}
+                    className="group block"
+                  >
+                    <div className="overflow-hidden rounded-xl">
+                      <img
+                        src={
+                          card.image_url!
+                        }
+                        alt={
+                          card.name
+                        }
+                        className="aspect-[2.5/3.5] w-full object-contain transition duration-200 ease-out group-hover:scale-[1.035]"
+                      />
+                    </div>
+
+                    <h2 className="mt-3 truncate text-sm font-semibold text-zinc-200 transition group-hover:text-white">
+                      {card.name}
+                    </h2>
+
+                    <p className="mt-1 truncate text-xs text-zinc-600">
+                      #
+                      {
+                        card.local_id
+                      }
+
+                      {card.rarity &&
+                      card.rarity !==
+                        'None'
+                        ? ` · ${card.rarity}`
+                        : ''}
+                    </p>
+
+                    {card.illustrator ? (
+                      <p className="mt-1 truncate text-xs text-zinc-700">
+                        {
+                          card.illustrator
+                        }
+                      </p>
+                    ) : null}
+                  </Link>
+
+                  <div className="mt-3">
+                    <FavoriteButton
+                      cardId={
+                        card.id
+                      }
+                      initialFavorite={favoriteIds.has(
+                        card.id
+                      )}
+                      loggedIn={Boolean(
+                        user
+                      )}
+                    />
+                  </div>
+                </div>
+              )
+            )}
+          </div>
+        )}
       </div>
     </main>
   )

@@ -1,9 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import ReactionButtons, {
-  Reaction,
-} from './reaction-buttons'
+import { useState } from 'react'
 
 export type RowCard = {
   id: string
@@ -16,66 +14,72 @@ export type RowCard = {
 type Props = {
   title: string
   cards: RowCard[]
-  userId: string | null
-  reactions?: Record<string, Reaction>
+  userId?: string | null
 }
 
 export default function CardRow({
   title,
   cards,
-  userId,
-  reactions = {},
 }: Props) {
-  if (cards.length === 0) {
+  const [badCardIds, setBadCardIds] =
+    useState<Set<string>>(new Set())
+
+  const visibleCards = cards.filter(
+    (card) =>
+      Boolean(card.image_url) &&
+      !badCardIds.has(card.id)
+  )
+
+  if (visibleCards.length === 0) {
     return null
   }
 
+  function hideBrokenCard(cardId: string) {
+    setBadCardIds((current) => {
+      const next = new Set(current)
+      next.add(cardId)
+
+      return next
+    })
+  }
+
   return (
-    <section className="py-6">
-      <h2 className="mb-4 text-xl font-semibold text-white">
-        {title}
-      </h2>
+    <section className="py-4">
+      <div className="mb-4 flex items-end justify-between">
+        <h2 className="text-xl font-semibold tracking-tight text-white">
+          {title}
+        </h2>
+      </div>
 
-      <div className="flex gap-4 overflow-x-auto pb-4">
-        {cards.map((card) => (
-          <div
+      <div className="flex gap-4 overflow-x-auto pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {visibleCards.map((card) => (
+          <Link
             key={card.id}
-            className="w-[160px] flex-none"
+            href={`/cards/${card.id}`}
+            className="group w-[170px] flex-none sm:w-[185px] md:w-[200px]"
           >
-            <Link
-              href={`/sets/${card.set_id}`}
-              className="block"
-            >
-              {card.image_url ? (
-                <img
-                  src={card.image_url}
-                  alt={card.name}
-                  className="aspect-[2.5/3.5] w-full rounded-xl object-cover"
-                />
-              ) : (
-                <div className="aspect-[2.5/3.5] w-full rounded-xl bg-zinc-900" />
-              )}
-
-              <h3 className="mt-2 truncate text-sm font-medium text-white">
-                {card.name}
-              </h3>
-
-              <p className="truncate text-xs text-zinc-500">
-                {card.rarity ?? 'Unknown rarity'}
-              </p>
-            </Link>
-
-            <div className="mt-2">
-              <ReactionButtons
-                cardId={card.id}
-                userId={userId}
-                initialReaction={
-                  reactions[card.id] ?? null
+            <div className="overflow-hidden rounded-xl">
+              <img
+                src={card.image_url!}
+                alt={card.name}
+                onError={() =>
+                  hideBrokenCard(card.id)
                 }
-                compact
+                className="aspect-[2.5/3.5] w-full object-contain transition duration-200 ease-out group-hover:scale-[1.035]"
               />
             </div>
-          </div>
+
+            <h3 className="mt-3 truncate text-sm font-semibold text-zinc-200 transition group-hover:text-white">
+              {card.name}
+            </h3>
+
+            <p className="mt-1 truncate text-xs text-zinc-600">
+              {card.rarity &&
+              card.rarity !== 'None'
+                ? card.rarity
+                : 'Pokémon card'}
+            </p>
+          </Link>
         ))}
       </div>
     </section>

@@ -8,7 +8,9 @@ import { Geist } from 'next/font/google'
 
 import './globals.css'
 
-import { createClient } from '@/lib/supabase/server'
+import {
+  createClient,
+} from '@/lib/supabase/server'
 
 const geist = Geist({
   subsets: ['latin'],
@@ -30,81 +32,153 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
-  const supabase = await createClient()
+  const supabase =
+    await createClient()
 
   const {
     data: { user },
-  } = await supabase.auth.getUser()
+  } =
+    await supabase.auth.getUser()
+
+  let socialNotificationCount =
+    0
+
+  if (user) {
+    const [
+      unreadSharesResult,
+      friendRequestsResult,
+    ] = await Promise.all([
+      supabase
+        .from('card_shares')
+        .select(
+          'id',
+          {
+            count: 'exact',
+            head: true,
+          }
+        )
+        .eq(
+          'recipient_id',
+          user.id
+        )
+        .is(
+          'read_at',
+          null
+        ),
+
+      supabase
+        .from('friendships')
+        .select(
+          'id',
+          {
+            count: 'exact',
+            head: true,
+          }
+        )
+        .eq(
+          'addressee_id',
+          user.id
+        )
+        .eq(
+          'status',
+          'pending'
+        ),
+    ])
+
+    socialNotificationCount =
+      (unreadSharesResult.count ??
+        0) +
+      (friendRequestsResult.count ??
+        0)
+  }
 
   return (
     <html lang="en">
-      <body className={geist.className}>
-        <header
-          style={{
-            borderBottom: '1px solid #222',
-            background: '#000',
-          }}
-        >
-          <nav
-            style={{
-              maxWidth: '1400px',
-              margin: '0 auto',
-              padding: '14px 16px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '20px',
-              overflowX: 'auto',
-              whiteSpace: 'nowrap',
-            }}
-          >
+      <body
+        className={
+          geist.className
+        }
+      >
+        <header className="sticky top-0 z-50 border-b border-white/10 bg-black/95 backdrop-blur">
+          <nav className="mx-auto flex max-w-[1400px] items-center gap-5 px-4 py-3">
             <Link
               href="/"
-              style={{
-                fontSize: '22px',
-                fontWeight: 750,
-                letterSpacing: '-0.04em',
-                color: '#fff',
-                textDecoration: 'none',
-                marginRight: 'auto',
-              }}
+              className="shrink-0 text-[22px] font-bold tracking-[-0.04em] text-white"
             >
               LostBinder
             </Link>
 
-            <Link
-              href="/explore"
-              style={{
-                color: '#fff',
-                textDecoration: 'none',
-                fontWeight: 500,
-              }}
-            >
-              Discover
-            </Link>
-
-            <Link
-              href="/sets"
-              style={{
-                color: '#fff',
-                textDecoration: 'none',
-                fontWeight: 500,
-              }}
-            >
-              Sets
-            </Link>
-
-            {user && (
+            <div className="hidden items-center gap-5 md:flex">
               <Link
-                href="/account/favorites"
-                style={{
-                  color: '#fff',
-                  textDecoration: 'none',
-                  fontWeight: 500,
-                }}
+                href="/"
+                className="text-sm font-medium text-zinc-300 transition hover:text-white"
               >
-                ♥ Favorites
+                Home
               </Link>
-            )}
+
+              <Link
+                href="/explore"
+                className="text-sm font-medium text-zinc-300 transition hover:text-white"
+              >
+                Discover
+              </Link>
+
+              <Link
+                href="/sets"
+                className="text-sm font-medium text-zinc-300 transition hover:text-white"
+              >
+                Sets
+              </Link>
+
+              {user ? (
+                <Link
+                  href="/friends"
+                  className="flex items-center gap-1.5 text-sm font-medium text-zinc-300 transition hover:text-white"
+                >
+                  <span>
+                    Friends
+                  </span>
+
+                  {socialNotificationCount >
+                  0 ? (
+                    <span className="flex min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
+                      {socialNotificationCount >
+                      99
+                        ? '99+'
+                        : socialNotificationCount}
+                    </span>
+                  ) : null}
+                </Link>
+              ) : null}
+
+              {user ? (
+                <Link
+                  href="/collection"
+                  className="text-sm font-medium text-zinc-300 transition hover:text-white"
+                >
+                  Favorites
+                </Link>
+              ) : null}
+            </div>
+
+            <form
+              action="/search"
+              method="get"
+              className="ml-auto hidden w-full max-w-sm lg:block"
+            >
+              <div className="relative">
+                <span className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-zinc-600">
+                  ⌕
+                </span>
+
+                <input
+                  type="search"
+                  name="q"
+                  placeholder="Search Pokémon, artist, set, year..."
+                  className="w-full rounded-full border border-white/10 bg-zinc-950 py-2.5 pl-10 pr-4 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-white/30"
+                />
+              </div>
+            </form>
 
             <Link
               href={
@@ -112,15 +186,81 @@ export default async function RootLayout({
                   ? '/account'
                   : '/auth/login'
               }
-              style={{
-                color: '#fff',
-                textDecoration: 'none',
-                fontWeight: 500,
-              }}
+              className="shrink-0 text-sm font-medium text-zinc-300 transition hover:text-white"
             >
-              {user ? 'Account' : 'Log In'}
+              {user
+                ? 'Account'
+                : 'Log In'}
             </Link>
           </nav>
+
+          <div className="border-t border-white/5 px-4 py-2 md:hidden">
+            <div className="mx-auto flex max-w-[1400px] items-center gap-4 overflow-x-auto">
+              <Link
+                href="/"
+                className="shrink-0 text-sm text-zinc-400 transition hover:text-white"
+              >
+                Home
+              </Link>
+
+              <Link
+                href="/explore"
+                className="shrink-0 text-sm text-zinc-400 transition hover:text-white"
+              >
+                Discover
+              </Link>
+
+              <Link
+                href="/sets"
+                className="shrink-0 text-sm text-zinc-400 transition hover:text-white"
+              >
+                Sets
+              </Link>
+
+              {user ? (
+                <Link
+                  href="/friends"
+                  className="flex shrink-0 items-center gap-1.5 text-sm text-zinc-400 transition hover:text-white"
+                >
+                  <span>
+                    Friends
+                  </span>
+
+                  {socialNotificationCount >
+                  0 ? (
+                    <span className="flex min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
+                      {socialNotificationCount >
+                      99
+                        ? '99+'
+                        : socialNotificationCount}
+                    </span>
+                  ) : null}
+                </Link>
+              ) : null}
+
+              {user ? (
+                <Link
+                  href="/collection"
+                  className="shrink-0 text-sm text-zinc-400 transition hover:text-white"
+                >
+                  Favorites
+                </Link>
+              ) : null}
+
+              <form
+                action="/search"
+                method="get"
+                className="min-w-[240px] flex-1"
+              >
+                <input
+                  type="search"
+                  name="q"
+                  placeholder="Search cards..."
+                  className="w-full rounded-full border border-white/10 bg-zinc-950 px-4 py-2 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-white/30"
+                />
+              </form>
+            </div>
+          </div>
         </header>
 
         {children}

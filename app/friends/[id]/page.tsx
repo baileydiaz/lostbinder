@@ -1,11 +1,21 @@
 import Link from 'next/link'
-import { notFound, redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import {
+  notFound,
+  redirect,
+} from 'next/navigation'
+
+import {
+  createClient,
+} from '@/lib/supabase/server'
 
 type Props = {
   params: Promise<{
     id: string
   }>
+}
+
+type FavoriteRow = {
+  card_id: string
 }
 
 type FriendCard = {
@@ -15,7 +25,7 @@ type FriendCard = {
   image_url: string | null
   rarity: string | null
   illustrator: string | null
-  loved_at: string
+  category: string | null
 }
 
 export default async function FriendCollectionPage({
@@ -23,14 +33,16 @@ export default async function FriendCollectionPage({
 }: Props) {
   const { id } = await params
 
-  const supabase = await createClient()
+  const supabase =
+    await createClient()
 
   const {
     data: { user },
-  } = await supabase.auth.getUser()
+  } =
+    await supabase.auth.getUser()
 
   if (!user) {
-    redirect('/login')
+    redirect('/auth/login')
   }
 
   const {
@@ -40,116 +52,274 @@ export default async function FriendCollectionPage({
     .from('profiles')
     .select(`
       id,
-      username,
-      display_name
+      username
     `)
     .eq('id', id)
     .maybeSingle()
 
-  if (profileError || !profile) {
+  if (
+    profileError ||
+    !profile
+  ) {
     notFound()
   }
 
+  /*
+   * Verify these users are
+   * accepted friends.
+   */
   const {
-    data,
-    error,
-  } = await supabase.rpc(
-    'get_friend_loved_cards',
-    {
-      friend_user_id: id,
-    }
-  )
+    data: friendship,
+    error: friendshipError,
+  } = await supabase
+    .from('friendships')
+    .select(`
+      id,
+      requester_id,
+      addressee_id,
+      status
+    `)
+    .eq(
+      'status',
+      'accepted'
+    )
+    .or(
+      `and(requester_id.eq.${user.id},addressee_id.eq.${id}),and(requester_id.eq.${id},addressee_id.eq.${user.id})`
+    )
+    .maybeSingle()
 
-  if (error) {
+  if (
+    friendshipError ||
+    !friendship
+  ) {
     return (
       <main className="min-h-screen bg-black px-5 py-10 text-white sm:px-8">
         <div className="mx-auto max-w-7xl">
           <Link
             href="/friends"
-            className="text-sm text-zinc-500 hover:text-white"
+            className="text-sm text-zinc-500 transition hover:text-white"
           >
             ← Friends
           </Link>
 
-          <h1 className="mt-6 text-3xl font-semibold">
-            Could not load this collection.
+          <h1 className="mt-8 text-3xl font-semibold">
+            This collection is private.
           </h1>
 
           <p className="mt-3 text-sm text-zinc-500">
-            You can only view Loved cards for
-            accepted friends.
+            You can only view collections
+            belonging to your friends.
           </p>
         </div>
       </main>
     )
   }
 
-  const cards = (data ?? []) as FriendCard[]
+  /*
+   * Load friend's actual Favorites.
+   */
+  const {
+    data: favoritesData,
+    error: favoritesError,
+  } = await supabase
+    .from('card_favorites')
+    .select(`
+      card_id
+    `)
+    .eq(
+      'user_id',
+      id
+    )
 
-  const displayName =
-    profile.display_name ||
+  if (favoritesError) {
+    return (
+      <main className="min-h-screen bg-black px-5 py-10 text-white sm:px-8">
+        <div className="mx-auto max-w-7xl">
+          <Link
+            href="/friends"
+            className="text-sm text-zinc-500 transition hover:text-white"
+          >
+            ← Friends
+          </Link>
+
+          <h1 className="mt-8 text-3xl font-semibold">
+            Could not load this collection.
+          </h1>
+        </div>
+      </main>
+    )
+  }
+
+  const favorites =
+    (favoritesData ??
+      []) as FavoriteRow[]
+
+  const cardIds =
+    favorites.map(
+      (favorite) =>
+        favorite.card_id
+    )
+
+  let cards:
+    FriendCard[] = []
+
+  if (cardIds.length > 0) {
+    const {
+      data: cardData,
+      error: cardError,
+    } = await supabase
+      .from('cards')
+      .select(`
+        id,
+        set_id,
+        name,
+        image_url,
+        rarity,
+        illustrator,
+        category
+      `)
+      .eq(
+        'category',
+        'Pokemon'
+      )
+      .in(
+        'id',
+        cardIds
+      )
+
+    if (cardError) {
+      return (
+        <main className="min-h-screen bg-black px-5 py-10 text-white sm:px-8">
+          <div className="mx-auto max-w-7xl">
+            <Link
+              href="/friends"
+              className="text-sm text-zinc-500 transition hover:text-white"
+            >
+              ← Friends
+            </Link>
+
+            <h1 className="mt-8 text-3xl font-semibold">
+              Could not load this collection.
+            </h1>
+
+            <p className="mt-3 text-sm text-red-400">
+              {cardError.message}
+            </p>
+          </div>
+        </main>
+      )
+    }
+
+    const cardById =
+      new Map(
+        (
+          (cardData ??
+            []) as FriendCard[]
+        ).map(
+          (card) => [
+            card.id,
+            card,
+          ]
+        )
+      )
+
+    cards =
+      cardIds
+        .map(
+          (cardId) =>
+            cardById.get(
+              cardId
+            )
+        )
+        .filter(
+          (
+            card
+          ): card is FriendCard =>
+            card !==
+            undefined
+        )
+  }
+
+  const username =
     profile.username ||
-    'Collector'
+    'collector'
 
   return (
     <main className="min-h-screen bg-black px-5 py-10 text-white sm:px-8">
       <div className="mx-auto max-w-7xl">
         <Link
           href="/friends"
-          className="text-sm text-zinc-500 hover:text-white"
+          className="text-sm text-zinc-500 transition hover:text-white"
         >
           ← Friends
         </Link>
 
-        <p className="mt-8 text-xs font-semibold uppercase tracking-[0.28em] text-zinc-500">
-          Friend Collection
-        </p>
+        <section className="pb-8 pt-8">
+          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-zinc-600">
+            Friend&apos;s Binder
+          </p>
 
-        <h1 className="mt-2 text-4xl font-semibold">
-          {displayName}&apos;s Loved Cards
-        </h1>
+          <h1 className="mt-2 text-4xl font-semibold tracking-tight sm:text-5xl">
+            @{username}
+          </h1>
 
-        <p className="mt-2 text-zinc-400">
-          {cards.length}{' '}
-          {cards.length === 1 ? 'card' : 'cards'}
-        </p>
+          <p className="mt-3 text-sm text-zinc-500">
+            {cards.length}{' '}
+            {cards.length === 1
+              ? 'favorite'
+              : 'favorites'}
+          </p>
+        </section>
 
         {cards.length === 0 ? (
-          <div className="mt-10 rounded-3xl border border-white/10 bg-zinc-950 p-10 text-center">
-            <p className="text-zinc-500">
-              They have not Loved any cards yet.
-            </p>
-          </div>
+          <section className="flex min-h-[40vh] items-center justify-center">
+            <div className="max-w-md text-center">
+              <h2 className="text-2xl font-semibold">
+                Nothing here yet.
+              </h2>
+
+              <p className="mt-3 text-sm text-zinc-500">
+                @{username} hasn&apos;t
+                Loved any Pokémon yet.
+              </p>
+            </div>
+          </section>
         ) : (
-          <div className="mt-10 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-            {cards.map((card) => (
-              <article key={card.id}>
+          <section className="grid grid-cols-2 gap-x-4 gap-y-8 pb-16 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+            {cards.map(
+              (card) => (
                 <Link
-                  href={`/sets/${card.set_id}`}
-                  className="block overflow-hidden rounded-2xl border border-white/10 bg-zinc-950 p-2"
+                  key={card.id}
+                  href={`/cards/${card.id}`}
+                  className="group min-w-0"
                 >
-                  {card.image_url ? (
-                    <img
-                      src={card.image_url}
-                      alt={card.name}
-                      loading="lazy"
-                      className="aspect-[2.5/3.5] w-full rounded-xl object-contain"
-                    />
-                  ) : (
-                    <div className="aspect-[2.5/3.5] rounded-xl bg-zinc-900" />
-                  )}
+                  <div className="overflow-hidden rounded-xl bg-zinc-950">
+                    {card.image_url ? (
+                      <img
+                        src={card.image_url}
+                        alt={card.name}
+                        loading="lazy"
+                        className="aspect-[2.5/3.5] w-full object-contain transition duration-200 group-hover:scale-[1.02]"
+                      />
+                    ) : (
+                      <div className="aspect-[2.5/3.5] w-full bg-zinc-900" />
+                    )}
+                  </div>
+
+                  <h2 className="mt-3 truncate text-sm font-medium">
+                    {card.name}
+                  </h2>
+
+                  <p className="mt-1 truncate text-xs text-zinc-600">
+                    {card.rarity &&
+                    card.rarity !== 'None'
+                      ? card.rarity
+                      : 'Pokémon card'}
+                  </p>
                 </Link>
-
-                <p className="mt-2 truncate text-sm font-medium">
-                  {card.name}
-                </p>
-
-                <p className="truncate text-xs text-zinc-600">
-                  {card.rarity || 'Pokémon card'}
-                </p>
-              </article>
-            ))}
-          </div>
+              )
+            )}
+          </section>
         )}
       </div>
     </main>
