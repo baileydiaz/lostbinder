@@ -1,8 +1,12 @@
-import { createClient } from '@/lib/supabase/server'
+import {
+  createClient,
+} from '@/lib/supabase/server'
 
-import ExploreCard from './explore-card'
+import ExploreCard
+  from './explore-card'
 
-export const dynamic = 'force-dynamic'
+export const dynamic =
+  'force-dynamic'
 
 type CardRecord = {
   id: string
@@ -20,9 +24,10 @@ type SetRow = {
   name: string
 }
 
-type ExploreCardType = CardRecord & {
-  set_name: string
-}
+type ExploreCardType =
+  CardRecord & {
+    set_name: string
+  }
 
 type ReactionRow = {
   card_id: string
@@ -36,36 +41,29 @@ type DismissalRow = {
 const INITIAL_BATCH_SIZE = 50
 
 export default async function ExplorePage() {
-  const supabase = await createClient()
+  const supabase =
+    await createClient()
 
   const {
     data: { user },
-  } = await supabase.auth.getUser()
+  } =
+    await supabase.auth.getUser()
 
+  /*
+   * Pull a genuinely random batch
+   * instead of taking the first 50
+   * cards by ID.
+   */
   const {
     data: cardsData,
     error: cardsError,
-  } = await supabase
-    .from('cards')
-    .select(`
-      id,
-      local_id,
-      name,
-      rarity,
-      illustrator,
-      image_url,
-      set_id,
-      category
-    `)
-    .eq('category', 'Pokemon')
-    .not('image_url', 'is', null)
-    .order('id', {
-      ascending: true,
-    })
-    .range(
-      0,
-      INITIAL_BATCH_SIZE - 1
-    )
+  } = await supabase.rpc(
+    'get_random_pokemon_cards',
+    {
+      limit_count:
+        INITIAL_BATCH_SIZE,
+    }
+  )
 
   if (cardsError) {
     console.error(
@@ -75,15 +73,22 @@ export default async function ExplorePage() {
   }
 
   const cards =
-    (cardsData ?? []) as CardRecord[]
+    (cardsData ??
+      []) as CardRecord[]
 
-  const setIds = Array.from(
-    new Set(
-      cards.map(
-        (card) => card.set_id
+  /*
+   * Grab the set names for the
+   * random cards we received.
+   */
+  const setIds =
+    Array.from(
+      new Set(
+        cards.map(
+          (card) =>
+            card.set_id
+        )
       )
     )
-  )
 
   let sets: SetRow[] = []
 
@@ -97,7 +102,10 @@ export default async function ExplorePage() {
         id,
         name
       `)
-      .in('id', setIds)
+      .in(
+        'id',
+        setIds
+      )
 
     if (error) {
       console.error(
@@ -107,43 +115,56 @@ export default async function ExplorePage() {
     }
 
     sets =
-      (data ?? []) as SetRow[]
+      (data ??
+        []) as SetRow[]
   }
 
-  const setNameById = new Map(
-    sets.map(
-      (set) => [
-        set.id,
-        set.name,
-      ]
+  const setNameById =
+    new Map(
+      sets.map(
+        (set) => [
+          set.id,
+          set.name,
+        ]
+      )
     )
-  )
 
-  const exploreCards: ExploreCardType[] =
+  const exploreCards:
+    ExploreCardType[] =
     cards.map(
       (card) => ({
         ...card,
+
         set_name:
           setNameById.get(
             card.set_id
-          ) ?? card.set_id,
+          ) ??
+          card.set_id,
       })
     )
 
-  let initialReactions: Record<
-    string,
-    'like' | 'love'
-  > = {}
+  let initialReactions:
+    Record<
+      string,
+      'like' | 'love'
+    > = {}
 
-  let dismissedCardIds: string[] = []
+  let dismissedCardIds:
+    string[] = []
 
+  /*
+   * Logged-in users should not see
+   * cards they have already handled.
+   */
   if (user) {
     const [
       reactionResult,
       dismissalResult,
     ] = await Promise.all([
       supabase
-        .from('card_reactions')
+        .from(
+          'card_reactions'
+        )
         .select(`
           card_id,
           reaction
@@ -154,25 +175,35 @@ export default async function ExplorePage() {
         ),
 
       supabase
-        .from('card_dismissals')
-        .select('card_id')
+        .from(
+          'card_dismissals'
+        )
+        .select(
+          'card_id'
+        )
         .eq(
           'user_id',
           user.id
         ),
     ])
 
-    if (reactionResult.error) {
+    if (
+      reactionResult.error
+    ) {
       console.error(
         'Could not load reactions:',
-        reactionResult.error.message
+        reactionResult.error
+          .message
       )
     }
 
-    if (dismissalResult.error) {
+    if (
+      dismissalResult.error
+    ) {
       console.error(
         'Could not load dismissals:',
-        dismissalResult.error.message
+        dismissalResult.error
+          .message
       )
     }
 
@@ -201,24 +232,32 @@ export default async function ExplorePage() {
   }
 
   return (
-    <main className="min-h-screen bg-black px-4 py-8 text-white">
+    <main className="min-h-screen bg-black px-3 py-4 text-white sm:px-4 sm:py-8">
       <div className="mx-auto max-w-5xl">
-        <div className="mb-8 text-center">
-          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-zinc-600">
+
+        {/*
+         * Compact on mobile so the
+         * discovery card gets most of
+         * the viewport.
+         */}
+        <div className="mb-4 text-center sm:mb-8">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-600 sm:text-xs sm:tracking-[0.28em]">
             Discover
           </p>
 
-          <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:mt-2 sm:text-4xl">
             Find your next favorite.
           </h1>
 
-          <p className="mt-2 text-sm text-zinc-600">
+          <p className="mt-1 text-xs text-zinc-600 sm:mt-2 sm:text-sm">
             Like, Love, or pass.
           </p>
         </div>
 
         <ExploreCard
-          cards={exploreCards}
+          cards={
+            exploreCards
+          }
           userId={
             user?.id ?? null
           }
@@ -227,9 +266,6 @@ export default async function ExplorePage() {
           }
           initialDismissedCardIds={
             dismissedCardIds
-          }
-          initialOffset={
-            INITIAL_BATCH_SIZE
           }
         />
       </div>

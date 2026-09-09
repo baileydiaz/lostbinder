@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+
 import {
   useCallback,
   useEffect,
@@ -54,12 +55,12 @@ type Props = {
     'like' | 'love'
   >
 
-  initialDismissedCardIds: string[]
-
-  initialOffset: number
+  initialDismissedCardIds:
+    string[]
 }
 
 const BATCH_SIZE = 50
+
 const PREFETCH_THRESHOLD = 10
 
 function shuffleCards<T>(
@@ -98,7 +99,6 @@ export default function ExploreCard({
   userId,
   initialReactions,
   initialDismissedCardIds,
-  initialOffset,
 }: Props) {
   const [
     cards,
@@ -114,13 +114,20 @@ export default function ExploreCard({
     reactions,
     setReactions,
   ] = useState<
-    Record<string, Reaction>
-  >(initialReactions)
+    Record<
+      string,
+      Reaction
+    >
+  >(
+    initialReactions
+  )
 
   const [
     dismissedCardIds,
     setDismissedCardIds,
-  ] = useState<Set<string>>(
+  ] = useState<
+    Set<string>
+  >(
     () =>
       new Set(
         initialDismissedCardIds
@@ -130,18 +137,12 @@ export default function ExploreCard({
   const [
     badCardIds,
     setBadCardIds,
-  ] = useState<Set<string>>(
+  ] = useState<
+    Set<string>
+  >(
     () => new Set()
   )
 
-  /*
-   * The ID of the card whose image
-   * has successfully loaded.
-   *
-   * Until this matches the current
-   * card, we only show the loading
-   * screen.
-   */
   const [
     loadedImageCardId,
     setLoadedImageCardId,
@@ -155,27 +156,17 @@ export default function ExploreCard({
   ] = useState(false)
 
   const [
-    hasMore,
-    setHasMore,
-  ] = useState(true)
-
-  const [
     error,
     setError,
   ] = useState('')
 
-  const offsetRef =
-    useRef(initialOffset)
-
   const loadingRef =
     useRef(false)
 
-  const hasMoreRef =
-    useRef(true)
-
   /*
-   * Remove everything the user has
-   * already handled.
+   * Anything the user already
+   * reacted to or dismissed is
+   * removed from the queue.
    */
   const visibleCards =
     useMemo(
@@ -203,12 +194,6 @@ export default function ExploreCard({
       ]
     )
 
-  /*
-   * Discover is a queue.
-   *
-   * Always work on the first
-   * eligible card.
-   */
   const card =
     visibleCards[0]
 
@@ -219,12 +204,17 @@ export default function ExploreCard({
           card.id
     )
 
+  /*
+   * Get another RANDOM batch.
+   *
+   * There is intentionally no
+   * offset anymore.
+   */
   const loadMoreCards =
     useCallback(
       async () => {
         if (
-          loadingRef.current ||
-          !hasMoreRef.current
+          loadingRef.current
         ) {
           return
         }
@@ -235,51 +225,26 @@ export default function ExploreCard({
         setLoadingMore(true)
         setError('')
 
-        const currentOffset =
-          offsetRef.current
-
         const supabase =
           createClient()
 
         const {
           data,
-          error:
-            cardError,
-        } = await supabase
-          .from('cards')
-          .select(`
-            id,
-            local_id,
-            name,
-            rarity,
-            illustrator,
-            image_url,
-            set_id,
-            category
-          `)
-          .eq(
-            'category',
-            'Pokemon'
-          )
-          .not(
-            'image_url',
-            'is',
-            null
-          )
-          .order(
-            'id',
-            {
-              ascending: true,
-            }
-          )
-          .range(
-            currentOffset,
-            currentOffset +
-              BATCH_SIZE -
-              1
-          )
+          error: cardError,
+        } = await supabase.rpc(
+          'get_random_pokemon_cards',
+          {
+            limit_count:
+              BATCH_SIZE,
+          }
+        )
 
         if (cardError) {
+          console.error(
+            'Could not load random cards:',
+            cardError.message
+          )
+
           setError(
             cardError.message
           )
@@ -299,11 +264,6 @@ export default function ExploreCard({
         if (
           newCards.length === 0
         ) {
-          hasMoreRef.current =
-            false
-
-          setHasMore(false)
-
           loadingRef.current =
             false
 
@@ -313,24 +273,9 @@ export default function ExploreCard({
         }
 
         /*
-         * Move the database cursor
-         * forward before doing
-         * anything else.
+         * Hydrate the cards with their
+         * actual set names.
          */
-        offsetRef.current =
-          currentOffset +
-          newCards.length
-
-        if (
-          newCards.length <
-          BATCH_SIZE
-        ) {
-          hasMoreRef.current =
-            false
-
-          setHasMore(false)
-        }
-
         const setIds =
           Array.from(
             new Set(
@@ -409,9 +354,9 @@ export default function ExploreCard({
           )
 
         /*
-         * Randomize each incoming
-         * batch before adding it to
-         * the Discover queue.
+         * The RPC is random already,
+         * but shuffling here prevents
+         * any accidental ordering.
          */
         const shuffledCards =
           shuffleCards(
@@ -456,37 +401,26 @@ export default function ExploreCard({
     )
 
   /*
-   * Keep filling the queue.
-   *
-   * If entire batches contain cards
-   * already seen by the user, this
-   * can continue searching in the
-   * background.
+   * Refill the discovery queue before
+   * the user reaches the end.
    */
   useEffect(() => {
     if (
       visibleCards.length <=
         PREFETCH_THRESHOLD &&
-      hasMore &&
       !loadingMore
     ) {
       void loadMoreCards()
     }
   }, [
     visibleCards.length,
-    hasMore,
     loadingMore,
     loadMoreCards,
   ])
 
   /*
-   * Whenever we move to a different
-   * candidate card, it is NOT ready
-   * until that exact image fires
-   * onLoad.
-   *
-   * This is what prevents broken
-   * McDonald's cards from flashing.
+   * A new card isn't considered ready
+   * until that exact image loads.
    */
   useEffect(() => {
     if (
@@ -590,10 +524,6 @@ export default function ExploreCard({
   function removeBrokenCard(
     cardId: string
   ) {
-    /*
-     * Never allow the broken image
-     * to become the displayed card.
-     */
     setLoadedImageCardId(
       null
     )
@@ -615,16 +545,13 @@ export default function ExploreCard({
   }
 
   /*
-   * We ran out of eligible cards
-   * but there are still more rows
-   * in the database.
+   * Random discovery is effectively
+   * endless, so if our local queue
+   * empties we wait for another batch.
    */
-  if (
-    !card &&
-    hasMore
-  ) {
+  if (!card) {
     return (
-      <div className="py-20 text-center">
+      <div className="py-12 text-center sm:py-20">
         <div className="mx-auto h-7 w-7 animate-spin rounded-full border-2 border-zinc-800 border-t-white" />
 
         <p className="mt-4 text-sm text-zinc-500">
@@ -640,25 +567,6 @@ export default function ExploreCard({
     )
   }
 
-  /*
-   * Actually reached the end.
-   */
-  if (!card) {
-    return (
-      <div className="py-20 text-center">
-        <h2 className="text-2xl font-semibold">
-          You&apos;re caught up.
-        </h2>
-
-        <p className="mt-2 text-sm text-zinc-500">
-          You&apos;ve gone through
-          every Pokémon currently
-          available in LostBinder.
-        </p>
-      </div>
-    )
-  }
-
   const currentReaction =
     reactions[
       card.id
@@ -666,30 +574,33 @@ export default function ExploreCard({
 
   return (
     <div className="flex w-full justify-center">
-      <div className="w-full max-w-[360px]">
-        <div className="mb-3 flex items-center justify-between">
-          <span className="text-[11px] text-zinc-700">
+      <div className="w-full max-w-[340px] sm:max-w-[380px]">
+
+        <div className="mb-2 flex items-center justify-between sm:mb-3">
+          <span className="text-[10px] text-zinc-700 sm:text-[11px]">
             Discover
           </span>
 
           {loadingMore ? (
-            <span className="text-[11px] text-zinc-700">
+            <span className="text-[10px] text-zinc-700 sm:text-[11px]">
               Loading more...
             </span>
           ) : null}
         </div>
 
-        <div className="relative overflow-hidden rounded-[28px] border border-white/10 bg-zinc-950 shadow-2xl">
-          {/*
-            The image is mounted immediately
-            so the browser can test it.
+        <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-zinc-950 shadow-2xl sm:rounded-[28px]">
 
-            But it stays invisible until
-            onLoad succeeds.
-          */}
+          {/*
+           * On phones the artwork is
+           * capped relative to viewport
+           * height so controls remain
+           * reachable.
+           */}
           <Link
-            href={`/cards/${card.id}`}
-            className={`flex aspect-[2.5/3.5] w-full items-center justify-center overflow-hidden bg-zinc-950 ${
+            href={
+              `/cards/${card.id}`
+            }
+            className={`flex max-h-[56vh] w-full items-center justify-center overflow-hidden bg-zinc-950 sm:max-h-none sm:aspect-[2.5/3.5] ${
               imageReady
                 ? ''
                 : 'pointer-events-none'
@@ -715,7 +626,7 @@ export default function ExploreCard({
                   card.id
                 )
               }}
-              className={`h-full w-full object-contain transition-opacity duration-150 ${
+              className={`max-h-[56vh] w-full object-contain transition-opacity duration-150 sm:h-full sm:max-h-none ${
                 imageReady
                   ? 'opacity-100'
                   : 'opacity-0'
@@ -723,13 +634,8 @@ export default function ExploreCard({
             />
           </Link>
 
-          {/*
-            Nothing from the candidate
-            card is exposed until its
-            image is confirmed good.
-          */}
           {!imageReady ? (
-            <div className="absolute inset-0 flex items-center justify-center bg-zinc-950">
+            <div className="absolute inset-0 flex min-h-[360px] items-center justify-center bg-zinc-950">
               <div className="text-center">
                 <div className="mx-auto h-7 w-7 animate-spin rounded-full border-2 border-zinc-800 border-t-white" />
 
@@ -741,16 +647,17 @@ export default function ExploreCard({
           ) : null}
 
           {imageReady ? (
-            <div className="p-4">
-              <p className="truncate text-xs text-zinc-500">
+            <div className="p-3 sm:p-4">
+
+              <p className="truncate text-[11px] text-zinc-500 sm:text-xs">
                 {card.set_name}
               </p>
 
-              <h2 className="mt-1 truncate text-xl font-semibold tracking-tight">
+              <h2 className="mt-0.5 truncate text-lg font-semibold tracking-tight sm:mt-1 sm:text-xl">
                 {card.name}
               </h2>
 
-              <p className="mt-1 truncate text-xs text-zinc-500">
+              <p className="mt-0.5 truncate text-[11px] text-zinc-500 sm:mt-1 sm:text-xs">
                 {card.rarity &&
                 card.rarity !==
                   'None'
@@ -762,7 +669,7 @@ export default function ExploreCard({
                   : ''}
               </p>
 
-              <div className="mt-4">
+              <div className="mt-3 sm:mt-4">
                 <ReactionButtons
                   key={
                     card.id
@@ -806,7 +713,7 @@ export default function ExploreCard({
                 onClick={() =>
                   void dismissCard()
                 }
-                className="mt-3 w-full rounded-full border border-white/10 py-2.5 text-sm text-zinc-500 transition hover:border-white/25 hover:text-white"
+                className="mt-2 w-full rounded-full border border-white/10 py-2 text-xs text-zinc-500 transition hover:border-white/25 hover:text-white sm:mt-3 sm:py-2.5 sm:text-sm"
               >
                 ✕ Don&apos;t Like
               </button>

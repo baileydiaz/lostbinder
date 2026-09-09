@@ -66,10 +66,6 @@ export default async function HomePage() {
     CardRecord[] = []
 
   if (user) {
-    /*
-     * Load Likes/Loves, Favorites,
-     * and dismissed cards.
-     */
     const [
       reactionsResult,
       favoritesResult,
@@ -181,14 +177,6 @@ export default async function HomePage() {
           dismissal.card_id
       )
 
-    /*
-     * Load every card we've learned
-     * something about.
-     *
-     * Favorites are included even if
-     * an older favorite somehow has no
-     * card_reactions row.
-     */
     const signalCardIds =
       Array.from(
         new Set([
@@ -252,12 +240,6 @@ export default async function HomePage() {
         )
       )
 
-    /*
-     * YOUR LOVES
-     *
-     * card_favorites is the source
-     * of truth for the binder.
-     */
     lovedCards =
       favorites
         .map(
@@ -277,12 +259,6 @@ export default async function HomePage() {
           40
         )
 
-    /*
-     * Preferred sets.
-     *
-     * Favorites/Loves are strongest.
-     * Likes come second.
-     */
     const lovedSetIds =
       lovedCards.map(
         (card) =>
@@ -349,12 +325,6 @@ export default async function HomePage() {
         8
       )
 
-    /*
-     * FOR YOU
-     *
-     * More Pokémon from sets the user
-     * has shown interest in.
-     */
     if (
       preferredSetIds.length > 0
     ) {
@@ -595,53 +565,50 @@ export default async function HomePage() {
 
   return (
     <main className="min-h-screen bg-black text-white">
-      <div className="mx-auto max-w-[1400px] px-5 py-14 sm:px-8">
-        <section className="max-w-3xl">
-          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-zinc-600">
-            Discover Pokémon cards
-          </p>
+      <div className="mx-auto max-w-[1400px] px-4 pb-14 pt-6 sm:px-8 sm:pt-10">
 
-          <h1 className="mt-4 text-5xl font-semibold tracking-tight sm:text-6xl">
-            Find cards you didn&apos;t know you loved.
+        {/*
+         * Compact hero.
+         *
+         * The goal is to communicate
+         * LostBinder quickly and get
+         * users into the cards.
+         */}
+        <section className="max-w-2xl">
+          <h1 className="max-w-xl text-3xl font-semibold leading-[1.08] tracking-tight sm:text-5xl">
+            Find cards you didn&apos;t
+            know you&apos;d love.
           </h1>
 
-          <p className="mt-5 max-w-2xl text-base leading-7 text-zinc-500">
-            Explore Pokémon cards one
-            at a time, build your
-            binder, and discover what
-            other collectors love.
+          <p className="mt-3 max-w-xl text-sm leading-6 text-zinc-500 sm:mt-4 sm:text-base">
+            Discover Pokémon cards based
+            on what you love — not what
+            they cost.
           </p>
 
-          <div className="mt-8 flex flex-wrap gap-3">
+          <div className="mt-5 flex items-center gap-3 sm:mt-6">
             <Link
               href="/explore"
-              className="rounded-full border border-white/10 px-6 py-3 text-sm text-zinc-300 transition hover:border-white/30 hover:text-white"
+              className="rounded-full bg-white px-5 py-2.5 text-sm font-medium text-black transition hover:bg-zinc-200"
             >
               Start discovering
             </Link>
 
-            {user ? (
-              <Link
-                href="/collection"
-                className="rounded-full border border-white/10 px-6 py-3 text-sm text-zinc-300 transition hover:border-white/30 hover:text-white"
-              >
-                View binder
-              </Link>
-            ) : (
+            {!user ? (
               <Link
                 href="/auth/login"
-                className="rounded-full border border-white/10 px-6 py-3 text-sm text-zinc-300 transition hover:border-white/30 hover:text-white"
+                className="px-2 py-2.5 text-sm text-zinc-500 transition hover:text-white"
               >
                 Sign in
               </Link>
-            )}
+            ) : null}
           </div>
         </section>
 
         {user &&
         recommendedCards.length >
           0 ? (
-          <section className="mt-16">
+          <section className="mt-10 sm:mt-14">
             <CardRow
               title="For You"
               cards={
@@ -650,7 +617,7 @@ export default async function HomePage() {
             />
 
             <p className="-mt-1 text-xs text-zinc-700">
-              Based on Pokémon you&apos;ve
+              Based on cards you&apos;ve
               liked and loved.
             </p>
           </section>
@@ -658,7 +625,7 @@ export default async function HomePage() {
 
         {user &&
         lovedCards.length > 0 ? (
-          <section className="mt-10">
+          <section className="mt-8 sm:mt-10">
             <CardRow
               title="Your Loves"
               cards={
@@ -677,8 +644,8 @@ export default async function HomePage() {
               lovedCards.length >
                 0
             )
-              ? 'mt-10 space-y-14'
-              : 'mt-16 space-y-14'
+              ? 'mt-8 space-y-10 sm:mt-10 sm:space-y-14'
+              : 'mt-10 space-y-10 sm:mt-14 sm:space-y-14'
           }
         >
           {rows.map(
@@ -710,3 +677,4 @@ export default async function HomePage() {
     </main>
   )
 }
+
