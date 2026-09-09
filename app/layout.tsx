@@ -8,6 +8,9 @@ import { Geist } from 'next/font/google'
 
 import './globals.css'
 
+import MobileNav
+  from '@/app/components/mobile-nav'
+
 import {
   createClient,
 } from '@/lib/supabase/server'
@@ -197,109 +200,14 @@ export default async function RootLayout({
           </nav>
 
           {/* Mobile */}
-          <div className="md:hidden">
-            <div className="mx-auto max-w-[1400px] px-4 pb-3 pt-3">
-
-              {/* Logo + account */}
-              <div className="flex items-center justify-between">
-                <Link
-                  href="/"
-                  className="text-[21px] font-bold tracking-[-0.04em] text-white"
-                >
-                  LostBinder
-                </Link>
-
-                <Link
-                  href={
-                    user
-                      ? '/account'
-                      : '/auth/login'
-                  }
-                  className="text-sm font-medium text-zinc-300 transition hover:text-white"
-                >
-                  {user
-                    ? 'Account'
-                    : 'Log In'}
-                </Link>
-              </div>
-
-              {/* Search */}
-              <form
-                action="/search"
-                method="get"
-                className="mt-3 w-full"
-              >
-                <div className="relative">
-                  <span className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-zinc-600">
-                    ⌕
-                  </span>
-
-                  <input
-                    type="search"
-                    name="q"
-                    placeholder="Search cards..."
-                    className="w-full rounded-full border border-white/10 bg-zinc-950 py-2.5 pl-10 pr-4 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-white/30"
-                  />
-                </div>
-              </form>
-
-              {/* Navigation */}
-              <div className="-mx-4 mt-3 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                <div className="flex min-w-max items-center gap-5">
-                  <Link
-                    href="/"
-                    className="shrink-0 text-sm text-zinc-400 transition hover:text-white"
-                  >
-                    Home
-                  </Link>
-
-                  <Link
-                    href="/explore"
-                    className="shrink-0 text-sm text-zinc-400 transition hover:text-white"
-                  >
-                    Discover
-                  </Link>
-
-                  <Link
-                    href="/sets"
-                    className="shrink-0 text-sm text-zinc-400 transition hover:text-white"
-                  >
-                    Sets
-                  </Link>
-
-                  {user ? (
-                    <Link
-                      href="/friends"
-                      className="flex shrink-0 items-center gap-1.5 text-sm text-zinc-400 transition hover:text-white"
-                    >
-                      <span>
-                        Friends
-                      </span>
-
-                      {socialNotificationCount >
-                      0 ? (
-                        <span className="flex min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
-                          {socialNotificationCount >
-                          99
-                            ? '99+'
-                            : socialNotificationCount}
-                        </span>
-                      ) : null}
-                    </Link>
-                  ) : null}
-
-                  {user ? (
-                    <Link
-                      href="/collection"
-                      className="shrink-0 text-sm text-zinc-400 transition hover:text-white"
-                    >
-                      Favorites
-                    </Link>
-                  ) : null}
-                </div>
-              </div>
-            </div>
-          </div>
+          <MobileNav
+            isLoggedIn={
+              Boolean(user)
+            }
+            socialNotificationCount={
+              socialNotificationCount
+            }
+          />
         </header>
 
         {children}
