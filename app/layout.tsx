@@ -46,10 +46,14 @@ export default async function RootLayout({
   let socialNotificationCount =
     0
 
+  let username:
+    string | null = null
+
   if (user) {
     const [
       unreadSharesResult,
       friendRequestsResult,
+      profileResult,
     ] = await Promise.all([
       supabase
         .from('card_shares')
@@ -86,6 +90,15 @@ export default async function RootLayout({
           'status',
           'pending'
         ),
+
+      supabase
+        .from('profiles')
+        .select('username')
+        .eq(
+          'id',
+          user.id
+        )
+        .maybeSingle(),
     ])
 
     socialNotificationCount =
@@ -93,7 +106,19 @@ export default async function RootLayout({
         0) +
       (friendRequestsResult.count ??
         0)
+
+    username =
+      profileResult.data
+        ?.username ??
+      null
   }
+
+  const accountLabel =
+    username
+      ? `@${username}`
+      : user
+        ? 'Account'
+        : 'Log In'
 
   return (
     <html lang="en">
@@ -193,9 +218,7 @@ export default async function RootLayout({
               }
               className="shrink-0 text-sm font-medium text-zinc-300 transition hover:text-white"
             >
-              {user
-                ? 'Account'
-                : 'Log In'}
+              {accountLabel}
             </Link>
           </nav>
 
@@ -203,6 +226,9 @@ export default async function RootLayout({
           <MobileNav
             isLoggedIn={
               Boolean(user)
+            }
+            username={
+              username
             }
             socialNotificationCount={
               socialNotificationCount

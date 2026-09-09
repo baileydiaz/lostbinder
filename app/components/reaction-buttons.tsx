@@ -27,6 +27,10 @@ type Props = {
   onSaved?: (
     reaction: Reaction
   ) => void
+
+  onError?: (
+    message: string
+  ) => void
 }
 
 export default function ReactionButtons({
@@ -35,6 +39,7 @@ export default function ReactionButtons({
   initialReaction = null,
   compact = false,
   onSaved,
+  onError,
 }: Props) {
   const [
     reaction,
@@ -59,7 +64,231 @@ export default function ReactionButtons({
   const router =
     useRouter()
 
-  async function saveReaction(
+  function showError(
+    message: string
+  ) {
+    setError(message)
+
+    onError?.(
+      message
+    )
+  }
+
+  async function persistReaction(
+    previousReaction:
+      Reaction,
+    next:
+      Reaction
+  ) {
+    const supabase =
+      createClient()
+
+    try {
+      /*
+       * Remove reaction entirely.
+       */
+      if (next === null) {
+        const {
+          error:
+            reactionDeleteError,
+        } =
+          await supabase
+            .from(
+              'card_reactions'
+            )
+            .delete()
+            .eq(
+              'user_id',
+              userId!
+            )
+            .eq(
+              'card_id',
+              cardId
+            )
+
+        if (
+          reactionDeleteError
+        ) {
+          throw new Error(
+            reactionDeleteError
+              .message
+          )
+        }
+
+        if (
+          previousReaction ===
+          'love'
+        ) {
+          const {
+            error:
+              favoriteDeleteError,
+          } =
+            await supabase
+              .from(
+                'card_favorites'
+              )
+              .delete()
+              .eq(
+                'user_id',
+                userId!
+              )
+              .eq(
+                'card_id',
+                cardId
+              )
+
+          if (
+            favoriteDeleteError
+          ) {
+            throw new Error(
+              favoriteDeleteError
+                .message
+            )
+          }
+        }
+
+        return
+      }
+
+      /*
+       * Store Pass / Like / Love.
+       */
+      const {
+        error:
+          reactionError,
+      } =
+        await supabase
+          .from(
+            'card_reactions'
+          )
+          .upsert(
+            {
+              user_id:
+                userId!,
+
+              card_id:
+                cardId,
+
+              reaction:
+                next,
+
+              updated_at:
+                new Date()
+                  .toISOString(),
+            },
+            {
+              onConflict:
+                'user_id,card_id',
+            }
+          )
+
+      if (
+        reactionError
+      ) {
+        throw new Error(
+          reactionError.message
+        )
+      }
+
+      /*
+       * Love also belongs in Binder.
+       */
+      if (
+        next === 'love'
+      ) {
+        const {
+          error:
+            favoriteError,
+        } =
+          await supabase
+            .from(
+              'card_favorites'
+            )
+            .upsert(
+              {
+                user_id:
+                  userId!,
+
+                card_id:
+                  cardId,
+              },
+              {
+                onConflict:
+                  'user_id,card_id',
+              }
+            )
+
+        if (
+          favoriteError
+        ) {
+          throw new Error(
+            favoriteError.message
+          )
+        }
+      }
+
+      /*
+       * Leaving Love removes it
+       * from Binder.
+       */
+      if (
+        previousReaction ===
+          'love' &&
+        next !== 'love'
+      ) {
+        const {
+          error:
+            favoriteDeleteError,
+        } =
+          await supabase
+            .from(
+              'card_favorites'
+            )
+            .delete()
+            .eq(
+              'user_id',
+              userId!
+            )
+            .eq(
+              'card_id',
+              cardId
+            )
+
+        if (
+          favoriteDeleteError
+        ) {
+          throw new Error(
+            favoriteDeleteError
+              .message
+          )
+        }
+      }
+    } catch (
+      caughtError
+    ) {
+      const message =
+        caughtError
+          instanceof Error
+          ? caughtError.message
+          : 'Could not save reaction.'
+
+      /*
+       * Roll UI back if the DB
+       * save fails.
+       */
+      setReaction(
+        previousReaction
+      )
+
+      showError(
+        message
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  function saveReaction(
     next:
       | 'pass'
       | 'like'
@@ -77,236 +306,51 @@ export default function ReactionButtons({
       return
     }
 
-    setSaving(true)
     setError('')
 
-    const supabase =
-      createClient()
+    const previousReaction =
+      reaction
 
-    /*
-     * Clicking the currently
-     * selected reaction removes it.
-     */
-    if (
+    const nextReaction:
+      Reaction =
       reaction === next
-    ) {
-      const {
-        error:
-          reactionDeleteError,
-      } = await supabase
-        .from(
-          'card_reactions'
-        )
-        .delete()
-        .eq(
-          'user_id',
-          userId
-        )
-        .eq(
-          'card_id',
-          cardId
-        )
-
-      if (
-        reactionDeleteError
-      ) {
-        setError(
-          reactionDeleteError
-            .message
-        )
-
-        setSaving(false)
-
-        return
-      }
-
-      /*
-       * Removing Love must also
-       * remove it from the binder.
-       */
-      if (
-        next === 'love'
-      ) {
-        const {
-          error:
-            favoriteDeleteError,
-        } = await supabase
-          .from(
-            'card_favorites'
-          )
-          .delete()
-          .eq(
-            'user_id',
-            userId
-          )
-          .eq(
-            'card_id',
-            cardId
-          )
-
-        if (
-          favoriteDeleteError
-        ) {
-          setError(
-            favoriteDeleteError
-              .message
-          )
-
-          setSaving(false)
-
-          return
-        }
-      }
-
-      setReaction(null)
-
-      onSaved?.(null)
-
-      router.refresh()
-
-      setSaving(false)
-
-      return
-    }
+        ? null
+        : next
 
     /*
-     * Store Pass, Like, or Love
-     * in one table.
+     * Optimistic UI:
+     * update instantly.
      */
-    const {
-      error:
-        reactionError,
-    } = await supabase
-      .from(
-        'card_reactions'
-      )
-      .upsert(
-        {
-          user_id:
-            userId,
+    setReaction(
+      nextReaction
+    )
 
-          card_id:
-            cardId,
+    onSaved?.(
+      nextReaction
+    )
 
-          reaction:
-            next,
+    setSaving(true)
 
-          updated_at:
-            new Date()
-              .toISOString(),
-        },
-        {
-          onConflict:
-            'user_id,card_id',
-        }
-      )
-
-    if (
-      reactionError
-    ) {
-      setError(
-        reactionError.message
-      )
-
-      setSaving(false)
-
-      return
-    }
-
-    /*
-     * Love means the card also
-     * belongs in the user's binder.
-     */
-    if (
-      next === 'love'
-    ) {
-      const {
-        error:
-          favoriteError,
-      } = await supabase
-        .from(
-          'card_favorites'
-        )
-        .upsert(
-          {
-            user_id:
-              userId,
-
-            card_id:
-              cardId,
-          },
-          {
-            onConflict:
-              'user_id,card_id',
-          }
-        )
-
-      if (
-        favoriteError
-      ) {
-        setError(
-          favoriteError.message
-        )
-
-        setSaving(false)
-
-        return
-      }
-    }
-
-    /*
-     * Moving away from Love means
-     * it should no longer be in the
-     * binder.
-     */
-    if (
-      reaction === 'love' &&
-      next !== 'love'
-    ) {
-      const {
-        error:
-          favoriteDeleteError,
-      } = await supabase
-        .from(
-          'card_favorites'
-        )
-        .delete()
-        .eq(
-          'user_id',
-          userId
-        )
-        .eq(
-          'card_id',
-          cardId
-        )
-
-      if (
-        favoriteDeleteError
-      ) {
-        setError(
-          favoriteDeleteError
-            .message
-        )
-
-        setSaving(false)
-
-        return
-      }
-    }
-
-    setReaction(next)
-
-    onSaved?.(next)
-
-    router.refresh()
-
-    setSaving(false)
+    void persistReaction(
+      previousReaction,
+      nextReaction
+    )
   }
 
-  const baseInactive =
+  const buttonBase =
     compact
-      ? 'rounded-full border border-white/15 px-3 py-2 text-xs transition'
-      : 'rounded-full border border-white/15 px-4 py-3 text-sm transition sm:px-5'
+      ? 'flex items-center justify-center gap-1.5 rounded-full border px-3 py-2 text-xs font-medium transition'
+      : 'flex items-center justify-center gap-2 rounded-full border px-3 py-3 text-sm font-medium transition sm:px-5'
+
+  function buttonClasses(
+    selected: boolean
+  ) {
+    return `${buttonBase} ${
+      selected
+        ? 'border-white bg-white text-black'
+        : 'border-white/15 bg-transparent text-zinc-400 hover:border-white/35 hover:text-white'
+    } disabled:cursor-default disabled:opacity-60`
+  }
 
   return (
     <div>
@@ -328,15 +372,22 @@ export default function ReactionButtons({
             )
           }
           className={
-            reaction ===
-            'pass'
-              ? compact
-                ? 'rounded-full bg-zinc-700 px-3 py-2 text-xs font-semibold text-white transition'
-                : 'rounded-full bg-zinc-700 px-4 py-3 text-sm font-semibold text-white transition sm:px-5'
-              : `${baseInactive} text-zinc-500 hover:border-white/40 hover:text-white`
+            buttonClasses(
+              reaction ===
+                'pass'
+            )
           }
         >
-          👎 Pass
+          <span
+            aria-hidden="true"
+            className="text-lg leading-none"
+          >
+            ×
+          </span>
+
+          <span>
+            Pass
+          </span>
         </button>
 
         <button
@@ -350,15 +401,22 @@ export default function ReactionButtons({
             )
           }
           className={
-            reaction ===
-            'like'
-              ? compact
-                ? 'rounded-full bg-white px-3 py-2 text-xs font-semibold text-black transition'
-                : 'rounded-full bg-white px-4 py-3 text-sm font-semibold text-black transition sm:px-5'
-              : `${baseInactive} text-zinc-300 hover:border-white/40 hover:text-white`
+            buttonClasses(
+              reaction ===
+                'like'
+            )
           }
         >
-          👍 Like
+          <span
+            aria-hidden="true"
+            className="text-base leading-none"
+          >
+            +
+          </span>
+
+          <span>
+            Like
+          </span>
         </button>
 
         <button
@@ -372,17 +430,22 @@ export default function ReactionButtons({
             )
           }
           className={
-            reaction ===
-            'love'
-              ? compact
-                ? 'rounded-full bg-red-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-red-500'
-                : 'rounded-full bg-red-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-red-500 sm:px-5'
-              : compact
-                ? 'rounded-full border border-red-500/40 px-3 py-2 text-xs font-semibold text-red-500 transition hover:border-red-500 hover:bg-red-500/10'
-                : 'rounded-full border border-red-500/40 px-4 py-3 text-sm font-semibold text-red-500 transition hover:border-red-500 hover:bg-red-500/10 sm:px-5'
+            buttonClasses(
+              reaction ===
+                'love'
+            )
           }
         >
-          ♥ Love
+          <span
+            aria-hidden="true"
+            className="text-base leading-none"
+          >
+            ♥
+          </span>
+
+          <span>
+            Love
+          </span>
         </button>
       </div>
 

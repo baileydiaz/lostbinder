@@ -163,10 +163,6 @@ export default function ExploreCard({
   const loadingRef =
     useRef(false)
 
-  /*
-   * Cards with ANY reaction are
-   * already handled.
-   */
   const visibleCards =
     useMemo(
       () =>
@@ -191,6 +187,9 @@ export default function ExploreCard({
 
   const card =
     visibleCards[0]
+
+  const nextCard =
+    visibleCards[1]
 
   const imageReady =
     Boolean(
@@ -394,10 +393,6 @@ export default function ExploreCard({
       []
     )
 
-  /*
-   * Refill before the user runs
-   * out of cards.
-   */
   useEffect(() => {
     if (
       visibleCards.length <=
@@ -413,22 +408,43 @@ export default function ExploreCard({
   ])
 
   /*
-   * A card isn't displayed until
-   * its image has loaded.
+   * Reset current image state
+   * whenever the active card changes.
+   */
+  useEffect(() => {
+    if (!card) {
+      return
+    }
+
+    setLoadedImageCardId(
+      null
+    )
+  }, [
+    card?.id,
+  ])
+
+  /*
+   * Preload the next card image.
+   * This makes decisions feel much
+   * faster because the next artwork
+   * is usually already cached.
    */
   useEffect(() => {
     if (
-      !card ||
-      loadedImageCardId !==
-        card.id
+      !nextCard
+        ?.image_url
     ) {
-      setLoadedImageCardId(
-        null
-      )
+      return
     }
+
+    const image =
+      new Image()
+
+    image.src =
+      nextCard.image_url
   }, [
-    card,
-    loadedImageCardId,
+    nextCard?.id,
+    nextCard?.image_url,
   ])
 
   function removeBrokenCard(
@@ -456,19 +472,21 @@ export default function ExploreCard({
 
   if (!card) {
     return (
-      <div className="py-12 text-center sm:py-20">
-        <div className="mx-auto h-7 w-7 animate-spin rounded-full border-2 border-zinc-800 border-t-white" />
+      <div className="flex min-h-[60dvh] items-center justify-center text-center">
+        <div>
+          <div className="mx-auto h-7 w-7 animate-spin rounded-full border-2 border-zinc-800 border-t-white" />
 
-        <p className="mt-4 text-sm text-zinc-500">
-          Finding your next
-          Pokémon...
-        </p>
-
-        {error ? (
-          <p className="mt-4 text-xs text-red-400">
-            {error}
+          <p className="mt-4 text-sm text-zinc-500">
+            Finding your next
+            Pokémon...
           </p>
-        ) : null}
+
+          {error ? (
+            <p className="mt-4 text-xs text-red-400">
+              {error}
+            </p>
+          ) : null}
+        </div>
       </div>
     )
   }
@@ -480,9 +498,9 @@ export default function ExploreCard({
 
   return (
     <div className="flex w-full justify-center">
-      <div className="w-full max-w-[340px] sm:max-w-[380px]">
+      <div className="w-full max-w-[360px] sm:max-w-[380px]">
 
-        <div className="mb-2 flex items-center justify-between sm:mb-3">
+        <div className="mb-2 flex items-center justify-between">
           <span className="text-[10px] text-zinc-700 sm:text-[11px]">
             Discover
           </span>
@@ -500,7 +518,7 @@ export default function ExploreCard({
             href={
               `/cards/${card.id}`
             }
-            className={`flex max-h-[56vh] w-full items-center justify-center overflow-hidden bg-zinc-950 sm:max-h-none sm:aspect-[2.5/3.5] ${
+            className={`flex h-[48dvh] min-h-[330px] max-h-[510px] w-full items-center justify-center overflow-hidden bg-zinc-950 sm:h-auto sm:min-h-0 sm:max-h-none sm:aspect-[2.5/3.5] ${
               imageReady
                 ? ''
                 : 'pointer-events-none'
@@ -526,7 +544,7 @@ export default function ExploreCard({
                   card.id
                 )
               }}
-              className={`max-h-[56vh] w-full object-contain transition-opacity duration-150 sm:h-full sm:max-h-none ${
+              className={`h-full w-full object-contain transition-opacity duration-150 ${
                 imageReady
                   ? 'opacity-100'
                   : 'opacity-0'
@@ -535,7 +553,7 @@ export default function ExploreCard({
           </Link>
 
           {!imageReady ? (
-            <div className="absolute inset-0 flex min-h-[360px] items-center justify-center bg-zinc-950">
+            <div className="absolute inset-0 flex min-h-[330px] items-center justify-center bg-zinc-950">
               <div className="text-center">
                 <div className="mx-auto h-7 w-7 animate-spin rounded-full border-2 border-zinc-800 border-t-white" />
 
@@ -572,7 +590,7 @@ export default function ExploreCard({
                   : ''}
               </p>
 
-              <div className="mt-3 sm:mt-4">
+              <div className="mt-3">
                 <ReactionButtons
                   key={
                     card.id
@@ -592,6 +610,10 @@ export default function ExploreCard({
                     if (
                       nextReaction
                     ) {
+                      /*
+                       * This update happens
+                       * instantly now.
+                       */
                       setLoadedImageCardId(
                         null
                       )
@@ -607,6 +629,13 @@ export default function ExploreCard({
                         })
                       )
                     }
+                  }}
+                  onError={(
+                    message
+                  ) => {
+                    setError(
+                      message
+                    )
                   }}
                 />
               </div>

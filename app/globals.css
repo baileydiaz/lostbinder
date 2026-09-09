@@ -1,42 +1,40 @@
 @import "tailwindcss";
 
-html,
-body {
-  margin: 0;
-  padding: 0;
-  width: 100%;
-  background: #000;
-  color: #fff;
-}
+@layer base {
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    background: #000;
+    color: #fff;
+  }
 
-* {
-  box-sizing: border-box;
-}
+  * {
+    box-sizing: border-box;
+  }
 
-body {
-  min-height: 100vh;
-  background: #000;
-  color: #fff;
-}
+  body {
+    min-height: 100vh;
+    background: #000;
+    color: #fff;
+  }
 
-a {
-  color: inherit;
-}
+  img {
+    max-width: 100%;
+    height: auto;
+  }
 
-img {
-  max-width: 100%;
-  height: auto;
-}
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+  }
 
-button,
-input,
-textarea,
-select {
-  font: inherit;
-}
-
-button {
-  touch-action: manipulation;
+  button {
+    touch-action: manipulation;
+  }
 }
 
 /* Hide scrollbars while keeping scrolling enabled */

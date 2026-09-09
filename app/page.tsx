@@ -65,6 +65,9 @@ export default async function HomePage() {
   let recommendedCards:
     CardRecord[] = []
 
+  let favoriteCardIds:
+    string[] = []
+
   if (user) {
     const [
       reactionsResult,
@@ -165,7 +168,7 @@ export default async function HomePage() {
           reaction.card_id
       )
 
-    const favoriteCardIds =
+    favoriteCardIds =
       favorites.map(
         (favorite) =>
           favorite.card_id
@@ -614,6 +617,13 @@ export default async function HomePage() {
               cards={
                 recommendedCards as RowCard[]
               }
+              userId={
+                user?.id ??
+                null
+              }
+              initialLovedCardIds={
+                favoriteCardIds
+              }
             />
 
             <p className="-mt-1 text-xs text-zinc-700">
@@ -630,6 +640,13 @@ export default async function HomePage() {
               title="Your Loves"
               cards={
                 lovedCards as RowCard[]
+              }
+              userId={
+                user?.id ??
+                null
+              }
+              initialLovedCardIds={
+                favoriteCardIds
               }
             />
           </section>
@@ -667,6 +684,13 @@ export default async function HomePage() {
                   }
                   cards={
                     row.cards
+                  }
+                  userId={
+                    user?.id ??
+                    null
+                  }
+                  initialLovedCardIds={
+                    favoriteCardIds
                   }
                 />
               </div>

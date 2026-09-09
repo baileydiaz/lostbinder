@@ -1,11 +1,15 @@
 'use client'
 
 import Link from 'next/link'
+
 import {
   useEffect,
   useRef,
   useState,
 } from 'react'
+
+import HomeLoveButton
+  from '@/app/components/home-love-button'
 
 export type RowCard = {
   id: string
@@ -19,40 +23,70 @@ type Props = {
   title: string
   cards: RowCard[]
   userId?: string | null
+  initialLovedCardIds?: string[]
 }
 
 export default function CardRow({
   title,
   cards,
+  userId = null,
+  initialLovedCardIds = [],
 }: Props) {
-  const [badCardIds, setBadCardIds] =
-    useState<Set<string>>(new Set())
+  const [
+    badCardIds,
+    setBadCardIds,
+  ] =
+    useState<
+      Set<string>
+    >(new Set())
 
-  const [canScrollLeft, setCanScrollLeft] =
+  const [
+    canScrollLeft,
+    setCanScrollLeft,
+  ] =
     useState(false)
 
-  const [canScrollRight, setCanScrollRight] =
+  const [
+    canScrollRight,
+    setCanScrollRight,
+  ] =
     useState(false)
 
   const scrollRef =
-    useRef<HTMLDivElement | null>(null)
+    useRef<
+      HTMLDivElement | null
+    >(null)
 
-  const visibleCards = cards.filter(
-    (card) =>
-      Boolean(card.image_url) &&
-      !badCardIds.has(card.id)
-  )
+  const initialLovedSet =
+    new Set(
+      initialLovedCardIds
+    )
 
-  function hideBrokenCard(cardId: string) {
-    setBadCardIds((current) => {
-      const next = new Set(current)
-      next.add(cardId)
-      return next
-    })
+  const visibleCards =
+    cards.filter(
+      (card) =>
+        Boolean(card.image_url) &&
+        !badCardIds.has(card.id)
+    )
+
+  function hideBrokenCard(
+    cardId: string
+  ) {
+    setBadCardIds(
+      (current) => {
+        const next =
+          new Set(current)
+
+        next.add(cardId)
+
+        return next
+      }
+    )
   }
 
   function updateScrollState() {
-    const element = scrollRef.current
+    const element =
+      scrollRef.current
 
     if (!element) {
       return
@@ -73,9 +107,12 @@ export default function CardRow({
   }
 
   function scrollRow(
-    direction: 'left' | 'right'
+    direction:
+      | 'left'
+      | 'right'
   ) {
-    const element = scrollRef.current
+    const element =
+      scrollRef.current
 
     if (!element) {
       return
@@ -99,7 +136,8 @@ export default function CardRow({
   useEffect(() => {
     updateScrollState()
 
-    const element = scrollRef.current
+    const element =
+      scrollRef.current
 
     if (!element) {
       return
@@ -139,7 +177,9 @@ export default function CardRow({
     }
   }, [visibleCards.length])
 
-  if (visibleCards.length === 0) {
+  if (
+    visibleCards.length === 0
+  ) {
     return null
   }
 
@@ -156,7 +196,9 @@ export default function CardRow({
             onClick={() =>
               scrollRow('left')
             }
-            disabled={!canScrollLeft}
+            disabled={
+              !canScrollLeft
+            }
             aria-label={`Scroll ${title} left`}
             className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-zinc-950 text-lg text-zinc-300 transition hover:border-white/25 hover:bg-zinc-900 hover:text-white disabled:cursor-default disabled:opacity-20"
           >
@@ -168,7 +210,9 @@ export default function CardRow({
             onClick={() =>
               scrollRow('right')
             }
-            disabled={!canScrollRight}
+            disabled={
+              !canScrollRight
+            }
             aria-label={`Scroll ${title} right`}
             className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-zinc-950 text-lg text-zinc-300 transition hover:border-white/25 hover:bg-zinc-900 hover:text-white disabled:cursor-default disabled:opacity-20"
           >
@@ -192,38 +236,56 @@ export default function CardRow({
         >
           {visibleCards.map(
             (card) => (
-              <Link
+              <article
                 key={card.id}
-                href={`/cards/${card.id}`}
                 className="group w-[160px] flex-none snap-start sm:w-[180px] md:w-[195px] lg:w-[205px]"
               >
-                <div className="overflow-hidden rounded-xl transition duration-200 ease-out group-hover:-translate-y-1">
-                  <img
-                    src={
-                      card.image_url!
-                    }
-                    alt={card.name}
-                    onError={() =>
-                      hideBrokenCard(
-                        card.id
-                      )
-                    }
-                    className="aspect-[2.5/3.5] w-full object-contain transition duration-200 ease-out group-hover:scale-[1.045]"
-                  />
+                <div className="relative">
+                  <Link
+                    href={`/cards/${card.id}`}
+                    className="block overflow-hidden rounded-xl transition duration-200 ease-out group-hover:-translate-y-1"
+                  >
+                    <img
+                      src={card.image_url!}
+                      alt={card.name}
+                      onError={() =>
+                        hideBrokenCard(
+                          card.id
+                        )
+                      }
+                      className="aspect-[2.5/3.5] w-full object-contain transition duration-200 ease-out group-hover:scale-[1.045]"
+                    />
+                  </Link>
+
+                  <div className="absolute right-2 top-2 z-10">
+                    <HomeLoveButton
+                      cardId={card.id}
+                      userId={userId}
+                      initialLoved={
+                        initialLovedSet.has(
+                          card.id
+                        )
+                      }
+                    />
+                  </div>
                 </div>
 
-                <h3 className="mt-3 truncate text-sm font-semibold text-zinc-200 transition group-hover:text-white">
-                  {card.name}
-                </h3>
+                <Link
+                  href={`/cards/${card.id}`}
+                  className="block"
+                >
+                  <h3 className="mt-3 truncate text-sm font-semibold text-zinc-200 transition group-hover:text-white">
+                    {card.name}
+                  </h3>
 
-                <p className="mt-1 truncate text-xs text-zinc-600">
-                  {card.rarity &&
-                  card.rarity !==
-                    'None'
-                    ? card.rarity
-                    : 'Pokémon card'}
-                </p>
-              </Link>
+                  <p className="mt-1 truncate text-xs text-zinc-600">
+                    {card.rarity &&
+                    card.rarity !== 'None'
+                      ? card.rarity
+                      : 'Pokémon card'}
+                  </p>
+                </Link>
+              </article>
             )
           )}
         </div>
