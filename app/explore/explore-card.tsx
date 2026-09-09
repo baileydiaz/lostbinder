@@ -1,25 +1,22 @@
 'use client'
 
-import Link
-  from 'next/link'
-
 import {
-  useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from 'react'
 
-import ReactionButtons, {
-  type Reaction,
-} from '@/app/components/reaction-buttons'
+import Link from 'next/link'
 
 import {
   createClient,
 } from '@/lib/supabase/client'
 
-type Card = {
+import ReactionButtons, {
+  type Reaction,
+} from '@/app/components/reaction-buttons'
+
+type ExploreCardItem = {
   id: string
   local_id: string
   name: string
@@ -28,92 +25,117 @@ type Card = {
   image_url: string | null
   set_id: string
   category: string | null
-  set_name: string
-}
-
-type CardRecord = {
-  id: string
-  local_id: string
-  name: string
-  rarity: string | null
-  illustrator: string | null
-  image_url: string | null
-  set_id: string
-  category: string | null
-}
-
-type SetRow = {
-  id: string
-  name: string
+  set_name?: string | null
 }
 
 type Props = {
-  cards: Card[]
-
-  userId:
-    string | null
-
-  initialReactions:
-    Record<
-      string,
-      | 'pass'
-      | 'like'
-      | 'love'
-    >
+  cards: ExploreCardItem[]
+  userId: string | null
+  initialReactions?: Record<
+    string,
+    Reaction
+  >
 }
 
-const BATCH_SIZE =
-  50
+const LOAD_MORE_AT = 8
 
-const PREFETCH_THRESHOLD =
-  10
+const RANDOM_BATCH_SIZE = 40
 
-function shuffleCards<T>(
-  items: T[]
+function diversifyCards(
+  cards: ExploreCardItem[]
 ) {
-  const shuffled = [
-    ...items,
-  ]
+  const bySet =
+    new Map<
+      string,
+      ExploreCardItem[]
+    >()
 
   for (
-    let i =
-      shuffled.length - 1;
-    i > 0;
-    i--
+    const card of cards
   ) {
-    const j =
-      Math.floor(
-        Math.random() *
-          (i + 1)
-      )
+    const current =
+      bySet.get(
+        card.set_id
+      ) ?? []
 
-    ;[
-      shuffled[i],
-      shuffled[j],
-    ] = [
-      shuffled[j],
-      shuffled[i],
-    ]
+    current.push(
+      card
+    )
+
+    bySet.set(
+      card.set_id,
+      current
+    )
   }
 
-  return shuffled
+  const groups =
+    Array.from(
+      bySet.values()
+    )
+
+  for (
+    const group of groups
+  ) {
+    group.sort(
+      () =>
+        Math.random() -
+        0.5
+    )
+  }
+
+  groups.sort(
+    () =>
+      Math.random() -
+      0.5
+  )
+
+  const result:
+    ExploreCardItem[] = []
+
+  let cardsLeft =
+    true
+
+  while (
+    cardsLeft
+  ) {
+    cardsLeft =
+      false
+
+    for (
+      const group of groups
+    ) {
+      const card =
+        group.shift()
+
+      if (card) {
+        result.push(
+          card
+        )
+
+        cardsLeft =
+          true
+      }
+    }
+  }
+
+  return result
 }
 
 export default function ExploreCard({
-  cards:
-    initialCards,
+  cards,
   userId,
-  initialReactions,
+  initialReactions = {},
 }: Props) {
   const [
-    cards,
-    setCards,
+    allCards,
+    setAllCards,
   ] =
-    useState<Card[]>(
-      () =>
-        shuffleCards(
-          initialCards
-        )
+    useState<
+      ExploreCardItem[]
+    >(
+      diversifyCards(
+        cards
+      )
     )
 
   const [
@@ -136,17 +158,8 @@ export default function ExploreCard({
     useState<
       Set<string>
     >(
-      () =>
-        new Set()
+      new Set()
     )
-
-  const [
-    loadedImageCardId,
-    setLoadedImageCardId,
-  ] =
-    useState<
-      string | null
-    >(null)
 
   const [
     loadingMore,
@@ -158,15 +171,14 @@ export default function ExploreCard({
     error,
     setError,
   ] =
-    useState('')
-
-  const loadingRef =
-    useRef(false)
+    useState<
+      string | null
+    >(null)
 
   const visibleCards =
     useMemo(
       () =>
-        cards.filter(
+        allCards.filter(
           (card) =>
             Boolean(
               card.image_url
@@ -179,7 +191,7 @@ export default function ExploreCard({
             ]
         ),
       [
-        cards,
+        allCards,
         badCardIds,
         reactions,
       ]
@@ -188,246 +200,125 @@ export default function ExploreCard({
   const card =
     visibleCards[0]
 
+  /*
+   * Prefer the next card from a
+   * different set.
+   */
   const nextCard =
-    visibleCards[1]
-
-  const imageReady =
-    Boolean(
-      card &&
-      loadedImageCardId ===
-        card.id
-    )
-
-  const loadMoreCards =
-    useCallback(
-      async () => {
+    useMemo(
+      () => {
         if (
-          loadingRef.current
+          visibleCards.length <
+          2
         ) {
-          return
+          return undefined
         }
 
-        loadingRef.current =
-          true
-
-        setLoadingMore(
-          true
-        )
-
-        setError('')
-
-        const supabase =
-          createClient()
-
-        const {
-          data,
-          error:
-            cardError,
-        } =
-          await supabase.rpc(
-            'get_random_pokemon_cards',
-            {
-              limit_count:
-                BATCH_SIZE,
-            }
-          )
-
-        if (
-          cardError
-        ) {
-          console.error(
-            'Could not load random cards:',
-            cardError.message
-          )
-
-          setError(
-            cardError.message
-          )
-
-          loadingRef.current =
-            false
-
-          setLoadingMore(
-            false
-          )
-
-          return
+        if (!card) {
+          return visibleCards[
+            1
+          ]
         }
 
-        const newCards =
-          (data ??
-            []) as CardRecord[]
-
-        if (
-          newCards.length ===
-          0
-        ) {
-          loadingRef.current =
-            false
-
-          setLoadingMore(
-            false
-          )
-
-          return
-        }
-
-        const setIds =
-          Array.from(
-            new Set(
-              newCards.map(
-                (
-                  newCard
-                ) =>
-                  newCard.set_id
-              )
-            )
-          )
-
-        let sets:
-          SetRow[] = []
-
-        if (
-          setIds.length > 0
-        ) {
-          const {
-            data:
-              setData,
-            error:
-              setError,
-          } =
-            await supabase
-              .from(
-                'sets'
-              )
-              .select(`
-                id,
-                name
-              `)
-              .in(
-                'id',
-                setIds
-              )
-
-          if (
-            setError
-          ) {
-            console.error(
-              'Could not load sets:',
-              setError.message
-            )
-          }
-
-          sets =
-            (setData ??
-              []) as SetRow[]
-        }
-
-        const setNameById =
-          new Map(
-            sets.map(
-              (set) => [
-                set.id,
-                set.name,
-              ]
-            )
-          )
-
-        const hydratedCards:
-          Card[] =
-          newCards.map(
-            (
-              newCard
-            ) => ({
-              ...newCard,
-
-              set_name:
-                setNameById.get(
-                  newCard.set_id
-                ) ??
-                newCard.set_id,
-            })
-          )
-
-        const shuffledCards =
-          shuffleCards(
-            hydratedCards
-          )
-
-        setCards(
-          (current) => {
-            const existingIds =
-              new Set(
-                current.map(
-                  (
-                    currentCard
-                  ) =>
-                    currentCard.id
-                )
-              )
-
-            const uniqueCards =
-              shuffledCards.filter(
-                (
-                  newCard
-                ) =>
-                  !existingIds.has(
-                    newCard.id
-                  )
-              )
-
-            return [
-              ...current,
-              ...uniqueCards,
-            ]
-          }
-        )
-
-        loadingRef.current =
-          false
-
-        setLoadingMore(
-          false
+        return (
+          visibleCards
+            .slice(1)
+            .find(
+              (
+                candidate
+              ) =>
+                candidate
+                  .set_id !==
+                card.set_id
+            ) ??
+          visibleCards[
+            1
+          ]
         )
       },
-      []
+      [
+        card,
+        visibleCards,
+      ]
     )
 
-  useEffect(() => {
-    if (
-      visibleCards.length <=
-        PREFETCH_THRESHOLD &&
-      !loadingMore
-    ) {
-      void loadMoreCards()
-    }
-  }, [
-    visibleCards.length,
-    loadingMore,
-    loadMoreCards,
-  ])
-
   /*
-   * Reset current image state
-   * whenever the active card changes.
+   * Reorder the queue so the
+   * preferred next card actually
+   * becomes card #2.
    */
   useEffect(() => {
-    if (!card) {
+    if (
+      !card ||
+      !nextCard ||
+      visibleCards[
+        1
+      ]?.id ===
+        nextCard.id
+    ) {
       return
     }
 
-    setLoadedImageCardId(
-      null
+    setAllCards(
+      (current) => {
+        const currentIndex =
+          current.findIndex(
+            (item) =>
+              item.id ===
+              card.id
+          )
+
+        const nextIndex =
+          current.findIndex(
+            (item) =>
+              item.id ===
+              nextCard.id
+          )
+
+        if (
+          currentIndex ===
+            -1 ||
+          nextIndex ===
+            -1 ||
+          nextIndex ===
+            currentIndex +
+              1
+        ) {
+          return current
+        }
+
+        const copy =
+          [
+            ...current,
+          ]
+
+        const [
+          moved,
+        ] =
+          copy.splice(
+            nextIndex,
+            1
+          )
+
+        copy.splice(
+          currentIndex +
+            1,
+          0,
+          moved
+        )
+
+        return copy
+      }
     )
   }, [
     card?.id,
+    nextCard?.id,
+    visibleCards,
   ])
 
   /*
-   * Preload the next card image.
-   * This makes decisions feel much
-   * faster because the next artwork
-   * is usually already cached.
+   * Preload the preferred
+   * next card image.
    */
   useEffect(() => {
     if (
@@ -447,15 +338,214 @@ export default function ExploreCard({
     nextCard?.image_url,
   ])
 
-  function removeBrokenCard(
-    cardId: string
-  ) {
-    setLoadedImageCardId(
-      null
+  /*
+   * Grab another batch before
+   * the queue gets low.
+   */
+  useEffect(() => {
+    if (
+      visibleCards.length >
+        LOAD_MORE_AT ||
+      loadingMore
+    ) {
+      return
+    }
+
+    void loadMoreCards()
+  }, [
+    visibleCards.length,
+    loadingMore,
+  ])
+
+  async function loadMoreCards() {
+    if (
+      loadingMore
+    ) {
+      return
+    }
+
+    setLoadingMore(
+      true
     )
 
+    try {
+      const supabase =
+        createClient()
+
+      const {
+        data,
+        error:
+          randomError,
+      } =
+        await supabase
+          .rpc(
+            'get_random_pokemon_cards',
+            {
+              limit_count:
+                RANDOM_BATCH_SIZE,
+            }
+          )
+
+      if (
+        randomError
+      ) {
+        throw new Error(
+          randomError.message
+        )
+      }
+
+      const randomCards =
+        (
+          data ??
+          []
+        ) as ExploreCardItem[]
+
+      if (
+        randomCards.length ===
+        0
+      ) {
+        return
+      }
+
+      const uniqueSetIds =
+        Array.from(
+          new Set(
+            randomCards
+              .map(
+                (item) =>
+                  item.set_id
+              )
+              .filter(
+                Boolean
+              )
+          )
+        )
+
+      let setNameMap:
+        Record<
+          string,
+          string
+        > = {}
+
+      if (
+        uniqueSetIds.length >
+        0
+      ) {
+        const {
+          data:
+            setData,
+          error:
+            setError,
+        } =
+          await supabase
+            .from(
+              'sets'
+            )
+            .select(
+              'id, name'
+            )
+            .in(
+              'id',
+              uniqueSetIds
+            )
+
+        if (
+          setError
+        ) {
+          console.error(
+            'Could not load set names:',
+            setError
+          )
+        } else {
+          setNameMap =
+            Object.fromEntries(
+              (
+                setData ??
+                []
+              ).map(
+                (
+                  set
+                ) => [
+                  set.id,
+                  set.name,
+                ]
+              )
+            )
+        }
+      }
+
+      const hydrated =
+        randomCards.map(
+          (
+            item
+          ) => ({
+            ...item,
+
+            set_name:
+              setNameMap[
+                item.set_id
+              ] ??
+              item.set_name ??
+              null,
+          })
+        )
+
+      const diversified =
+        diversifyCards(
+          hydrated
+        )
+
+      setAllCards(
+        (
+          current
+        ) => {
+          const seen =
+            new Set(
+              current.map(
+                (
+                  item
+                ) =>
+                  item.id
+              )
+            )
+
+          const newCards =
+            diversified.filter(
+              (
+                item
+              ) =>
+                !seen.has(
+                  item.id
+                )
+            )
+
+          return [
+            ...current,
+            ...newCards,
+          ]
+        }
+      )
+    } catch (
+      loadError
+    ) {
+      console.error(
+        'Could not load more Explore cards:',
+        loadError
+      )
+    } finally {
+      setLoadingMore(
+        false
+      )
+    }
+  }
+
+  function hideBrokenCard(
+    cardId: string
+  ) {
     setBadCardIds(
-      (current) => {
+      (
+        current
+      ) => {
         const next =
           new Set(
             current
@@ -472,183 +562,193 @@ export default function ExploreCard({
 
   if (!card) {
     return (
-      <div className="flex min-h-[60dvh] items-center justify-center text-center">
+      <div className="mx-auto flex min-h-[55dvh] max-w-md items-center justify-center px-4 text-center">
         <div>
-          <div className="mx-auto h-7 w-7 animate-spin rounded-full border-2 border-zinc-800 border-t-white" />
+          {loadingMore ? (
+            <>
+              <div className="mx-auto h-7 w-7 animate-spin rounded-full border-2 border-zinc-800 border-t-white" />
 
-          <p className="mt-4 text-sm text-zinc-500">
-            Finding your next
-            Pokémon...
-          </p>
+              <p className="mt-4 text-sm text-zinc-500">
+                Finding more cards...
+              </p>
+            </>
+          ) : (
+            <>
+              <h2 className="text-xl font-semibold text-white">
+                You&apos;re all caught up.
+              </h2>
 
-          {error ? (
-            <p className="mt-4 text-xs text-red-400">
-              {error}
-            </p>
-          ) : null}
+              <p className="mt-2 text-sm leading-6 text-zinc-500">
+                We&apos;re grabbing another batch of cards for you.
+              </p>
+
+              <button
+                type="button"
+                onClick={() =>
+                  void loadMoreCards()
+                }
+                className="mt-5 rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-black transition hover:bg-zinc-200"
+              >
+                Find more cards
+              </button>
+            </>
+          )}
         </div>
       </div>
     )
   }
 
-  const currentReaction =
-    reactions[
-      card.id
-    ] ?? null
-
   return (
-    <div className="flex w-full justify-center">
-      <div className="w-full max-w-[360px] sm:max-w-[380px]">
-
-        <div className="mb-2 flex items-center justify-between">
-          <span className="text-[10px] text-zinc-700 sm:text-[11px]">
-            Discover
-          </span>
-
-          {loadingMore ? (
-            <span className="text-[10px] text-zinc-700 sm:text-[11px]">
-              Loading more...
-            </span>
-          ) : null}
+    <div className="mx-auto w-full max-w-[390px]">
+      {error ? (
+        <div className="mb-2 rounded-lg border border-red-950 bg-red-950/30 px-3 py-2 text-center text-xs text-red-300">
+          {error}
         </div>
+      ) : null}
 
-        <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-zinc-950 shadow-2xl sm:rounded-[28px]">
-
-          <Link
-            href={
-              `/cards/${card.id}`
-            }
-            className={`flex h-[48dvh] min-h-[330px] max-h-[510px] w-full items-center justify-center overflow-hidden bg-zinc-950 sm:h-auto sm:min-h-0 sm:max-h-none sm:aspect-[2.5/3.5] ${
-              imageReady
-                ? ''
-                : 'pointer-events-none'
-            }`}
-          >
+      <article
+        key={
+          card.id
+        }
+        className="overflow-hidden rounded-2xl border border-white/10 bg-zinc-950 shadow-2xl"
+      >
+        <Link
+          href={`/cards/${card.id}`}
+          className="block"
+        >
+          <div className="flex h-[48dvh] min-h-[330px] max-h-[510px] items-center justify-center overflow-hidden bg-zinc-950 sm:aspect-[2.5/3.5] sm:h-auto sm:max-h-none">
             <img
-              key={
-                card.id
-              }
               src={
                 card.image_url!
               }
               alt={
                 card.name
               }
-              onLoad={() => {
-                setLoadedImageCardId(
+              onError={() =>
+                hideBrokenCard(
                   card.id
                 )
-              }}
-              onError={() => {
-                removeBrokenCard(
-                  card.id
-                )
-              }}
-              className={`h-full w-full object-contain transition-opacity duration-150 ${
-                imageReady
-                  ? 'opacity-100'
-                  : 'opacity-0'
-              }`}
+              }
+              className="h-full w-full object-contain"
             />
-          </Link>
+          </div>
+        </Link>
 
-          {!imageReady ? (
-            <div className="absolute inset-0 flex min-h-[330px] items-center justify-center bg-zinc-950">
-              <div className="text-center">
-                <div className="mx-auto h-7 w-7 animate-spin rounded-full border-2 border-zinc-800 border-t-white" />
+        <div className="p-3 sm:p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <Link
+                href={`/cards/${card.id}`}
+                className="block"
+              >
+                <h2 className="truncate text-lg font-semibold tracking-tight text-white sm:text-xl">
+                  {
+                    card.name
+                  }
+                </h2>
+              </Link>
 
-                <p className="mt-4 text-xs text-zinc-600">
-                  Finding your next
-                  Pokémon...
-                </p>
-              </div>
-            </div>
-          ) : null}
-
-          {imageReady ? (
-            <div className="p-3 sm:p-4">
-
-              <p className="truncate text-[11px] text-zinc-500 sm:text-xs">
+              <p className="mt-0.5 truncate text-xs text-zinc-500 sm:text-sm">
                 {
-                  card.set_name
+                  card.set_name ??
+                  card.set_id
                 }
               </p>
-
-              <h2 className="mt-0.5 truncate text-lg font-semibold tracking-tight sm:mt-1 sm:text-xl">
-                {card.name}
-              </h2>
-
-              <p className="mt-0.5 truncate text-[11px] text-zinc-500 sm:mt-1 sm:text-xs">
-                {card.rarity &&
-                card.rarity !==
-                  'None'
-                  ? card.rarity
-                  : 'Pokémon card'}
-
-                {card.illustrator
-                  ? ` · ${card.illustrator}`
-                  : ''}
-              </p>
-
-              <div className="mt-3">
-                <ReactionButtons
-                  key={
-                    card.id
-                  }
-                  cardId={
-                    card.id
-                  }
-                  userId={
-                    userId
-                  }
-                  initialReaction={
-                    currentReaction
-                  }
-                  onSaved={(
-                    nextReaction
-                  ) => {
-                    if (
-                      nextReaction
-                    ) {
-                      /*
-                       * This update happens
-                       * instantly now.
-                       */
-                      setLoadedImageCardId(
-                        null
-                      )
-
-                      setReactions(
-                        (
-                          current
-                        ) => ({
-                          ...current,
-
-                          [card.id]:
-                            nextReaction,
-                        })
-                      )
-                    }
-                  }}
-                  onError={(
-                    message
-                  ) => {
-                    setError(
-                      message
-                    )
-                  }}
-                />
-              </div>
-
-              {error ? (
-                <p className="mt-3 text-center text-xs text-red-400">
-                  {error}
-                </p>
-              ) : null}
             </div>
+
+            {card.rarity &&
+            card.rarity !==
+              'None' ? (
+              <span className="shrink-0 rounded-full border border-white/10 bg-black px-2.5 py-1 text-[10px] text-zinc-400 sm:text-xs">
+                {
+                  card.rarity
+                }
+              </span>
+            ) : null}
+          </div>
+
+          {card.illustrator ? (
+            <p className="mt-1.5 text-xs text-zinc-600">
+              Illustrated by{' '}
+              <span className="text-zinc-400">
+                {
+                  card.illustrator
+                }
+              </span>
+            </p>
           ) : null}
+
+          <div className="mt-3">
+            <ReactionButtons
+              key={
+                card.id
+              }
+              cardId={
+                card.id
+              }
+              userId={
+                userId
+              }
+              initialReaction={
+                reactions[
+                  card.id
+                ] ??
+                null
+              }
+              onSaved={(
+                nextReaction
+              ) => {
+                if (
+                  nextReaction
+                ) {
+                  setReactions(
+                    (
+                      current
+                    ) => ({
+                      ...current,
+
+                      [card.id]:
+                        nextReaction,
+                    })
+                  )
+                }
+
+                setError(
+                  null
+                )
+              }}
+              onError={(
+                message
+              ) => {
+                setReactions(
+                  (
+                    current
+                  ) => {
+                    const next =
+                      {
+                        ...current,
+                      }
+
+                    delete next[
+                      card.id
+                    ]
+
+                    return next
+                  }
+                )
+
+                setError(
+                  message
+                )
+              }}
+            />
+          </div>
         </div>
-      </div>
+      </article>
+
+      <p className="mt-2 text-center text-[10px] text-zinc-700 sm:text-xs">
+        Tap the card to see more
+      </p>
     </div>
   )
 }
