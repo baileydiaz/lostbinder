@@ -286,9 +286,8 @@ export default async function PublicProfilePage({
               </h3>
 
               <p className="mt-2 text-sm text-zinc-600">
-                @{displayUsername}
-                hasn&apos;t Loved
-                any cards yet.
+              @{displayUsername}{' '}
+              hasn&apos;t Loved any cards yet.
               </p>
             </div>
           ) : (

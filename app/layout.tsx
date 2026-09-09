@@ -100,7 +100,9 @@ export default async function RootLayout({
         }
       >
         <header className="sticky top-0 z-50 border-b border-white/10 bg-black/95 backdrop-blur">
-          <nav className="mx-auto flex max-w-[1400px] items-center gap-5 px-4 py-3">
+
+          {/* Desktop */}
+          <nav className="mx-auto hidden max-w-[1400px] items-center gap-5 px-4 py-3 md:flex">
             <Link
               href="/"
               className="shrink-0 text-[22px] font-bold tracking-[-0.04em] text-white"
@@ -108,7 +110,7 @@ export default async function RootLayout({
               LostBinder
             </Link>
 
-            <div className="hidden items-center gap-5 md:flex">
+            <div className="flex items-center gap-5">
               <Link
                 href="/"
                 className="text-sm font-medium text-zinc-300 transition hover:text-white"
@@ -164,7 +166,7 @@ export default async function RootLayout({
             <form
               action="/search"
               method="get"
-              className="ml-auto hidden w-full max-w-sm lg:block"
+              className="ml-auto w-full max-w-sm"
             >
               <div className="relative">
                 <span className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-zinc-600">
@@ -194,71 +196,108 @@ export default async function RootLayout({
             </Link>
           </nav>
 
-          <div className="border-t border-white/5 px-4 py-2 md:hidden">
-            <div className="mx-auto flex max-w-[1400px] items-center gap-4 overflow-x-auto">
-              <Link
-                href="/"
-                className="shrink-0 text-sm text-zinc-400 transition hover:text-white"
-              >
-                Home
-              </Link>
+          {/* Mobile */}
+          <div className="md:hidden">
+            <div className="mx-auto max-w-[1400px] px-4 pb-3 pt-3">
 
-              <Link
-                href="/explore"
-                className="shrink-0 text-sm text-zinc-400 transition hover:text-white"
-              >
-                Discover
-              </Link>
-
-              <Link
-                href="/sets"
-                className="shrink-0 text-sm text-zinc-400 transition hover:text-white"
-              >
-                Sets
-              </Link>
-
-              {user ? (
+              {/* Logo + account */}
+              <div className="flex items-center justify-between">
                 <Link
-                  href="/friends"
-                  className="flex shrink-0 items-center gap-1.5 text-sm text-zinc-400 transition hover:text-white"
+                  href="/"
+                  className="text-[21px] font-bold tracking-[-0.04em] text-white"
                 >
-                  <span>
-                    Friends
-                  </span>
-
-                  {socialNotificationCount >
-                  0 ? (
-                    <span className="flex min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
-                      {socialNotificationCount >
-                      99
-                        ? '99+'
-                        : socialNotificationCount}
-                    </span>
-                  ) : null}
+                  LostBinder
                 </Link>
-              ) : null}
 
-              {user ? (
                 <Link
-                  href="/collection"
-                  className="shrink-0 text-sm text-zinc-400 transition hover:text-white"
+                  href={
+                    user
+                      ? '/account'
+                      : '/auth/login'
+                  }
+                  className="text-sm font-medium text-zinc-300 transition hover:text-white"
                 >
-                  Favorites
+                  {user
+                    ? 'Account'
+                    : 'Log In'}
                 </Link>
-              ) : null}
+              </div>
 
+              {/* Search */}
               <form
                 action="/search"
                 method="get"
-                className="min-w-[240px] flex-1"
+                className="mt-3 w-full"
               >
-                <input
-                  type="search"
-                  name="q"
-                  placeholder="Search cards..."
-                  className="w-full rounded-full border border-white/10 bg-zinc-950 px-4 py-2 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-white/30"
-                />
+                <div className="relative">
+                  <span className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-zinc-600">
+                    ⌕
+                  </span>
+
+                  <input
+                    type="search"
+                    name="q"
+                    placeholder="Search cards..."
+                    className="w-full rounded-full border border-white/10 bg-zinc-950 py-2.5 pl-10 pr-4 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-white/30"
+                  />
+                </div>
               </form>
+
+              {/* Navigation */}
+              <div className="-mx-4 mt-3 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <div className="flex min-w-max items-center gap-5">
+                  <Link
+                    href="/"
+                    className="shrink-0 text-sm text-zinc-400 transition hover:text-white"
+                  >
+                    Home
+                  </Link>
+
+                  <Link
+                    href="/explore"
+                    className="shrink-0 text-sm text-zinc-400 transition hover:text-white"
+                  >
+                    Discover
+                  </Link>
+
+                  <Link
+                    href="/sets"
+                    className="shrink-0 text-sm text-zinc-400 transition hover:text-white"
+                  >
+                    Sets
+                  </Link>
+
+                  {user ? (
+                    <Link
+                      href="/friends"
+                      className="flex shrink-0 items-center gap-1.5 text-sm text-zinc-400 transition hover:text-white"
+                    >
+                      <span>
+                        Friends
+                      </span>
+
+                      {socialNotificationCount >
+                      0 ? (
+                        <span className="flex min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
+                          {socialNotificationCount >
+                          99
+                            ? '99+'
+                            : socialNotificationCount}
+                        </span>
+                      ) : null}
+                    </Link>
+                  ) : null}
+
+                  {user ? (
+                    <Link
+                      href="/collection"
+                      className="shrink-0 text-sm text-zinc-400 transition hover:text-white"
+                    >
+                      Favorites
+                    </Link>
+                  ) : null}
+                </div>
+              </div>
             </div>
           </div>
         </header>
