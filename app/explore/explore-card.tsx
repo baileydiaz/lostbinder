@@ -1,6 +1,7 @@
 'use client'
 
-import Link from 'next/link'
+import Link
+  from 'next/link'
 
 import {
   useCallback,
@@ -48,20 +49,24 @@ type SetRow = {
 
 type Props = {
   cards: Card[]
-  userId: string | null
 
-  initialReactions: Record<
-    string,
-    'like' | 'love'
-  >
+  userId:
+    string | null
 
-  initialDismissedCardIds:
-    string[]
+  initialReactions:
+    Record<
+      string,
+      | 'pass'
+      | 'like'
+      | 'love'
+    >
 }
 
-const BATCH_SIZE = 50
+const BATCH_SIZE =
+  50
 
-const PREFETCH_THRESHOLD = 10
+const PREFETCH_THRESHOLD =
+  10
 
 function shuffleCards<T>(
   items: T[]
@@ -95,78 +100,72 @@ function shuffleCards<T>(
 }
 
 export default function ExploreCard({
-  cards: initialCards,
+  cards:
+    initialCards,
   userId,
   initialReactions,
-  initialDismissedCardIds,
 }: Props) {
   const [
     cards,
     setCards,
-  ] = useState<Card[]>(
-    () =>
-      shuffleCards(
-        initialCards
-      )
-  )
+  ] =
+    useState<Card[]>(
+      () =>
+        shuffleCards(
+          initialCards
+        )
+    )
 
   const [
     reactions,
     setReactions,
-  ] = useState<
-    Record<
-      string,
-      Reaction
-    >
-  >(
-    initialReactions
-  )
-
-  const [
-    dismissedCardIds,
-    setDismissedCardIds,
-  ] = useState<
-    Set<string>
-  >(
-    () =>
-      new Set(
-        initialDismissedCardIds
-      )
-  )
+  ] =
+    useState<
+      Record<
+        string,
+        Reaction
+      >
+    >(
+      initialReactions
+    )
 
   const [
     badCardIds,
     setBadCardIds,
-  ] = useState<
-    Set<string>
-  >(
-    () => new Set()
-  )
+  ] =
+    useState<
+      Set<string>
+    >(
+      () =>
+        new Set()
+    )
 
   const [
     loadedImageCardId,
     setLoadedImageCardId,
-  ] = useState<
-    string | null
-  >(null)
+  ] =
+    useState<
+      string | null
+    >(null)
 
   const [
     loadingMore,
     setLoadingMore,
-  ] = useState(false)
+  ] =
+    useState(false)
 
   const [
     error,
     setError,
-  ] = useState('')
+  ] =
+    useState('')
 
   const loadingRef =
     useRef(false)
 
   /*
-   * Anything the user already
-   * reacted to or dismissed is
-   * removed from the queue.
+   * Cards with ANY reaction are
+   * already handled.
    */
   const visibleCards =
     useMemo(
@@ -179,9 +178,6 @@ export default function ExploreCard({
             !badCardIds.has(
               card.id
             ) &&
-            !dismissedCardIds.has(
-              card.id
-            ) &&
             !reactions[
               card.id
             ]
@@ -189,7 +185,6 @@ export default function ExploreCard({
       [
         cards,
         badCardIds,
-        dismissedCardIds,
         reactions,
       ]
     )
@@ -200,16 +195,10 @@ export default function ExploreCard({
   const imageReady =
     Boolean(
       card &&
-        loadedImageCardId ===
-          card.id
+      loadedImageCardId ===
+        card.id
     )
 
-  /*
-   * Get another RANDOM batch.
-   *
-   * There is intentionally no
-   * offset anymore.
-   */
   const loadMoreCards =
     useCallback(
       async () => {
@@ -222,7 +211,10 @@ export default function ExploreCard({
         loadingRef.current =
           true
 
-        setLoadingMore(true)
+        setLoadingMore(
+          true
+        )
+
         setError('')
 
         const supabase =
@@ -230,16 +222,20 @@ export default function ExploreCard({
 
         const {
           data,
-          error: cardError,
-        } = await supabase.rpc(
-          'get_random_pokemon_cards',
-          {
-            limit_count:
-              BATCH_SIZE,
-          }
-        )
+          error:
+            cardError,
+        } =
+          await supabase.rpc(
+            'get_random_pokemon_cards',
+            {
+              limit_count:
+                BATCH_SIZE,
+            }
+          )
 
-        if (cardError) {
+        if (
+          cardError
+        ) {
           console.error(
             'Could not load random cards:',
             cardError.message
@@ -252,7 +248,9 @@ export default function ExploreCard({
           loadingRef.current =
             false
 
-          setLoadingMore(false)
+          setLoadingMore(
+            false
+          )
 
           return
         }
@@ -262,20 +260,19 @@ export default function ExploreCard({
             []) as CardRecord[]
 
         if (
-          newCards.length === 0
+          newCards.length ===
+          0
         ) {
           loadingRef.current =
             false
 
-          setLoadingMore(false)
+          setLoadingMore(
+            false
+          )
 
           return
         }
 
-        /*
-         * Hydrate the cards with their
-         * actual set names.
-         */
         const setIds =
           Array.from(
             new Set(
@@ -353,11 +350,6 @@ export default function ExploreCard({
             })
           )
 
-        /*
-         * The RPC is random already,
-         * but shuffling here prevents
-         * any accidental ordering.
-         */
         const shuffledCards =
           shuffleCards(
             hydratedCards
@@ -395,14 +387,16 @@ export default function ExploreCard({
         loadingRef.current =
           false
 
-        setLoadingMore(false)
+        setLoadingMore(
+          false
+        )
       },
       []
     )
 
   /*
-   * Refill the discovery queue before
-   * the user reaches the end.
+   * Refill before the user runs
+   * out of cards.
    */
   useEffect(() => {
     if (
@@ -419,8 +413,8 @@ export default function ExploreCard({
   ])
 
   /*
-   * A new card isn't considered ready
-   * until that exact image loads.
+   * A card isn't displayed until
+   * its image has loaded.
    */
   useEffect(() => {
     if (
@@ -436,90 +430,6 @@ export default function ExploreCard({
     card,
     loadedImageCardId,
   ])
-
-  async function dismissCard() {
-    if (!card) {
-      return
-    }
-
-    const cardId =
-      card.id
-
-    setLoadedImageCardId(
-      null
-    )
-
-    setDismissedCardIds(
-      (current) => {
-        const next =
-          new Set(
-            current
-          )
-
-        next.add(
-          cardId
-        )
-
-        return next
-      }
-    )
-
-    if (!userId) {
-      return
-    }
-
-    const supabase =
-      createClient()
-
-    const {
-      error:
-        dismissalError,
-    } = await supabase
-      .from(
-        'card_dismissals'
-      )
-      .upsert(
-        {
-          user_id:
-            userId,
-
-          card_id:
-            cardId,
-        },
-        {
-          onConflict:
-            'user_id,card_id',
-        }
-      )
-
-    if (
-      dismissalError
-    ) {
-      console.error(
-        'Could not save dismissal:',
-        dismissalError.message
-      )
-
-      setDismissedCardIds(
-        (current) => {
-          const next =
-            new Set(
-              current
-            )
-
-          next.delete(
-            cardId
-          )
-
-          return next
-        }
-      )
-
-      setError(
-        'Could not save your choice.'
-      )
-    }
-  }
 
   function removeBrokenCard(
     cardId: string
@@ -544,18 +454,14 @@ export default function ExploreCard({
     )
   }
 
-  /*
-   * Random discovery is effectively
-   * endless, so if our local queue
-   * empties we wait for another batch.
-   */
   if (!card) {
     return (
       <div className="py-12 text-center sm:py-20">
         <div className="mx-auto h-7 w-7 animate-spin rounded-full border-2 border-zinc-800 border-t-white" />
 
         <p className="mt-4 text-sm text-zinc-500">
-          Finding your next Pokémon...
+          Finding your next
+          Pokémon...
         </p>
 
         {error ? (
@@ -590,12 +496,6 @@ export default function ExploreCard({
 
         <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-zinc-950 shadow-2xl sm:rounded-[28px]">
 
-          {/*
-           * On phones the artwork is
-           * capped relative to viewport
-           * height so controls remain
-           * reachable.
-           */}
           <Link
             href={
               `/cards/${card.id}`
@@ -640,7 +540,8 @@ export default function ExploreCard({
                 <div className="mx-auto h-7 w-7 animate-spin rounded-full border-2 border-zinc-800 border-t-white" />
 
                 <p className="mt-4 text-xs text-zinc-600">
-                  Finding your next Pokémon...
+                  Finding your next
+                  Pokémon...
                 </p>
               </div>
             </div>
@@ -650,7 +551,9 @@ export default function ExploreCard({
             <div className="p-3 sm:p-4">
 
               <p className="truncate text-[11px] text-zinc-500 sm:text-xs">
-                {card.set_name}
+                {
+                  card.set_name
+                }
               </p>
 
               <h2 className="mt-0.5 truncate text-lg font-semibold tracking-tight sm:mt-1 sm:text-xl">
@@ -707,16 +610,6 @@ export default function ExploreCard({
                   }}
                 />
               </div>
-
-              <button
-                type="button"
-                onClick={() =>
-                  void dismissCard()
-                }
-                className="mt-2 w-full rounded-full border border-white/10 py-2 text-xs text-zinc-500 transition hover:border-white/25 hover:text-white sm:mt-3 sm:py-2.5 sm:text-sm"
-              >
-                ✕ Don&apos;t Like
-              </button>
 
               {error ? (
                 <p className="mt-3 text-center text-xs text-red-400">

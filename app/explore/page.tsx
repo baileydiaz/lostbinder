@@ -31,41 +31,50 @@ type ExploreCardType =
 
 type ReactionRow = {
   card_id: string
-  reaction: 'like' | 'love'
+
+  reaction:
+    | 'pass'
+    | 'like'
+    | 'love'
 }
 
-type DismissalRow = {
-  card_id: string
-}
-
-const INITIAL_BATCH_SIZE = 50
+const INITIAL_BATCH_SIZE =
+  50
 
 export default async function ExplorePage() {
   const supabase =
     await createClient()
 
   const {
-    data: { user },
+    data: {
+      user,
+    },
   } =
-    await supabase.auth.getUser()
+    await supabase
+      .auth
+      .getUser()
 
   /*
-   * Pull a genuinely random batch
-   * instead of taking the first 50
-   * cards by ID.
+   * Random, diverse initial
+   * discovery batch.
    */
   const {
-    data: cardsData,
-    error: cardsError,
-  } = await supabase.rpc(
-    'get_random_pokemon_cards',
-    {
-      limit_count:
-        INITIAL_BATCH_SIZE,
-    }
-  )
+    data:
+      cardsData,
+    error:
+      cardsError,
+  } =
+    await supabase.rpc(
+      'get_random_pokemon_cards',
+      {
+        limit_count:
+          INITIAL_BATCH_SIZE,
+      }
+    )
 
-  if (cardsError) {
+  if (
+    cardsError
+  ) {
     console.error(
       'Could not load cards:',
       cardsError.message
@@ -76,10 +85,6 @@ export default async function ExplorePage() {
     (cardsData ??
       []) as CardRecord[]
 
-  /*
-   * Grab the set names for the
-   * random cards we received.
-   */
   const setIds =
     Array.from(
       new Set(
@@ -90,24 +95,30 @@ export default async function ExplorePage() {
       )
     )
 
-  let sets: SetRow[] = []
+  let sets:
+    SetRow[] = []
 
-  if (setIds.length > 0) {
+  if (
+    setIds.length > 0
+  ) {
     const {
       data,
       error,
-    } = await supabase
-      .from('sets')
-      .select(`
-        id,
-        name
-      `)
-      .in(
-        'id',
-        setIds
-      )
+    } =
+      await supabase
+        .from('sets')
+        .select(`
+          id,
+          name
+        `)
+        .in(
+          'id',
+          setIds
+        )
 
-    if (error) {
+    if (
+      error
+    ) {
       console.error(
         'Could not load sets:',
         error.message
@@ -146,22 +157,23 @@ export default async function ExplorePage() {
   let initialReactions:
     Record<
       string,
-      'like' | 'love'
+      | 'pass'
+      | 'like'
+      | 'love'
     > = {}
 
-  let dismissedCardIds:
-    string[] = []
-
   /*
-   * Logged-in users should not see
-   * cards they have already handled.
+   * Every decision now comes from
+   * card_reactions.
    */
   if (user) {
-    const [
-      reactionResult,
-      dismissalResult,
-    ] = await Promise.all([
-      supabase
+    const {
+      data:
+        reactionData,
+      error:
+        reactionError,
+    } =
+      await supabase
         .from(
           'card_reactions'
         )
@@ -172,43 +184,19 @@ export default async function ExplorePage() {
         .eq(
           'user_id',
           user.id
-        ),
-
-      supabase
-        .from(
-          'card_dismissals'
         )
-        .select(
-          'card_id'
-        )
-        .eq(
-          'user_id',
-          user.id
-        ),
-    ])
 
     if (
-      reactionResult.error
+      reactionError
     ) {
       console.error(
         'Could not load reactions:',
-        reactionResult.error
-          .message
-      )
-    }
-
-    if (
-      dismissalResult.error
-    ) {
-      console.error(
-        'Could not load dismissals:',
-        dismissalResult.error
-          .message
+        reactionError.message
       )
     }
 
     const reactions =
-      (reactionResult.data ??
+      (reactionData ??
         []) as ReactionRow[]
 
     initialReactions =
@@ -220,37 +208,24 @@ export default async function ExplorePage() {
           ]
         )
       )
-
-    dismissedCardIds =
-      (
-        (dismissalResult.data ??
-          []) as DismissalRow[]
-      ).map(
-        (dismissal) =>
-          dismissal.card_id
-      )
   }
 
   return (
     <main className="min-h-screen bg-black px-3 py-4 text-white sm:px-4 sm:py-8">
       <div className="mx-auto max-w-5xl">
 
-        {/*
-         * Compact on mobile so the
-         * discovery card gets most of
-         * the viewport.
-         */}
         <div className="mb-4 text-center sm:mb-8">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-600 sm:text-xs sm:tracking-[0.28em]">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-600 sm:text-xs">
             Discover
           </p>
 
           <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:mt-2 sm:text-4xl">
-            Find your next favorite.
+            Find your next
+            favorite.
           </h1>
 
           <p className="mt-1 text-xs text-zinc-600 sm:mt-2 sm:text-sm">
-            Like, Love, or pass.
+            Pass, Like, or Love.
           </p>
         </div>
 
@@ -259,13 +234,11 @@ export default async function ExplorePage() {
             exploreCards
           }
           userId={
-            user?.id ?? null
+            user?.id ??
+            null
           }
           initialReactions={
             initialReactions
-          }
-          initialDismissedCardIds={
-            dismissedCardIds
           }
         />
       </div>

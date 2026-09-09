@@ -925,7 +925,10 @@ export default function FriendsClient({
                       className="rounded-2xl border border-white/10 bg-zinc-950 p-5"
                     >
                       <Link
-                        href={`/friends/${item.profile.id}`}
+                        href={`/u/${encodeURIComponent(
+                        item.profile.username ??
+                          'collector'
+                        )}`}
                         className="block"
                       >
                         <p className="truncate text-lg font-medium">
