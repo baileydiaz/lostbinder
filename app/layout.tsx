@@ -122,6 +122,14 @@ export default async function RootLayout({
 
   return (
     <html lang="en">
+
+    <head>
+      <meta
+        name="impact-site-verification"
+        content="bfbd643e-5a15-4c5e-85b7-61ce28ca7598"
+      />
+    </head>
+
       <body
         className={
           geist.className
