@@ -214,12 +214,12 @@ export default async function ExplorePage() {
     <main className="min-h-[calc(100dvh-110px)] bg-black px-3 pb-3 pt-2 text-white sm:min-h-screen sm:px-4 sm:py-8">
       <div className="mx-auto max-w-5xl">
 
-        <div className="mb-2 text-center sm:mb-8">
-          <h1 className="text-xl font-semibold tracking-tight sm:text-4xl">
+        <div className="hidden text-center sm:mb-8 sm:block">
+          <h1 className="text-4xl font-semibold tracking-tight">
             Find your next favorite.
           </h1>
 
-          <p className="mt-0.5 text-[11px] text-zinc-600 sm:mt-2 sm:text-sm">
+          <p className="mt-2 text-sm text-zinc-600">
             Pass, Like, or Add to Collection.
           </p>
         </div>
