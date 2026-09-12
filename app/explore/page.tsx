@@ -220,7 +220,7 @@ export default async function ExplorePage() {
           </h1>
 
           <p className="mt-0.5 text-[11px] text-zinc-600 sm:mt-2 sm:text-sm">
-            Pass, Like, or Love.
+            Pass, Like, or Add to Collection.
           </p>
         </div>
 

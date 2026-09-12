@@ -148,13 +148,6 @@ export default async function RootLayout({
 
             <div className="flex items-center gap-5">
               <Link
-                href="/"
-                className="text-sm font-medium text-zinc-300 transition hover:text-white"
-              >
-                Home
-              </Link>
-
-              <Link
                 href="/explore"
                 className="text-sm font-medium text-zinc-300 transition hover:text-white"
               >
@@ -194,7 +187,7 @@ export default async function RootLayout({
                   href="/collection"
                   className="text-sm font-medium text-zinc-300 transition hover:text-white"
                 >
-                  Favorites
+                  My Binder
                 </Link>
               ) : null}
             </div>

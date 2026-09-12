@@ -219,7 +219,7 @@ export default function MobileNav({
                 }
                 className="flex min-h-14 items-center border-b border-white/5 text-sm font-medium text-zinc-300 transition hover:text-white"
               >
-                Favorites
+                My Binder
               </Link>
 
               <Link
@@ -244,15 +244,6 @@ export default function MobileNav({
             </Link>
           )}
 
-          <Link
-            href="/"
-            onClick={
-              closeMenu
-            }
-            className="flex min-h-14 items-center text-sm font-medium text-zinc-500 transition hover:text-white"
-          >
-            Home
-          </Link>
         </nav>
 
         <div className="border-t border-white/10 px-5 py-4">

@@ -337,19 +337,19 @@ export default function ReactionButtons({
     )
   }
 
-  const buttonBase =
-    compact
-      ? 'flex items-center justify-center gap-1.5 rounded-full border px-3 py-2 text-xs font-medium transition'
-      : 'flex items-center justify-center gap-2 rounded-full border px-3 py-3 text-sm font-medium transition sm:px-5'
-
   function buttonClasses(
-    selected: boolean
+  selected: boolean
   ) {
-    return `${buttonBase} ${
-      selected
-        ? 'border-white bg-white text-black'
-        : 'border-white/15 bg-transparent text-zinc-400 hover:border-white/35 hover:text-white'
-    } disabled:cursor-default disabled:opacity-60`
+  const base =
+    compact
+      ? 'flex min-w-0 items-center justify-center rounded-xl border px-3 py-2 text-xs font-medium leading-tight transition'
+      : 'flex min-w-0 items-center justify-center rounded-xl border px-3 py-3 text-sm font-medium leading-tight transition sm:px-5'
+
+  return `${base} ${
+    selected
+      ? 'border-white bg-white text-black'
+      : 'border-white/15 bg-transparent text-zinc-400 hover:border-white/35 hover:text-white'
+  } disabled:cursor-default disabled:opacity-60`
   }
 
   return (
@@ -380,7 +380,7 @@ export default function ReactionButtons({
         >
           <span
             aria-hidden="true"
-            className="text-lg leading-none"
+            className="mr-1 text-lg leading-none"
           >
             ×
           </span>
@@ -409,7 +409,7 @@ export default function ReactionButtons({
         >
           <span
             aria-hidden="true"
-            className="text-base leading-none"
+            className="mr-1 text-base leading-none"
           >
             +
           </span>
@@ -436,15 +436,11 @@ export default function ReactionButtons({
             )
           }
         >
-          <span
-            aria-hidden="true"
-            className="text-base leading-none"
-          >
-            ♥
-          </span>
-
-          <span>
-            Love
+          <span className="text-center leading-tight">
+            Add to
+            <span className="block">
+              Collection
+            </span>
           </span>
         </button>
       </div>

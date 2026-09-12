@@ -8,6 +8,9 @@ import {
   createClient,
 } from '@/lib/supabase/server'
 
+import RemoveFromBinderButton
+  from './remove-from-binder-button'
+
 type FavoriteRow = {
   card_id: string
   created_at: string
@@ -208,7 +211,7 @@ export default async function CollectionPage() {
                   ? 'card'
                   : 'cards'
               }{' '}
-              you love.
+              in your binder.
             </p>
           </div>
 
@@ -230,7 +233,7 @@ export default async function CollectionPage() {
               </h2>
 
               <p className="mt-3 text-sm leading-6 text-zinc-500">
-                Love cards while
+                Add cards while
                 exploring and
                 they&apos;ll show
                 up here.
@@ -248,52 +251,65 @@ export default async function CollectionPage() {
           <section className="grid grid-cols-2 gap-x-3 gap-y-7 sm:grid-cols-3 sm:gap-x-4 sm:gap-y-8 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
             {cards.map(
               (card) => (
-                <Link
+                <article
                   key={
                     card.id
                   }
-                  href={
-                    `/cards/${card.id}`
-                  }
-                  className="group min-w-0"
+                  className="min-w-0"
                 >
-                  <div className="overflow-hidden rounded-xl bg-zinc-950">
-                    {card.image_url ? (
-                      <img
-                        src={
-                          card.image_url
-                        }
-                        alt={
-                          card.name
-                        }
-                        loading="lazy"
-                        className="aspect-[2.5/3.5] w-full object-contain transition duration-200 group-hover:scale-[1.02]"
-                      />
-                    ) : (
-                      <div className="aspect-[2.5/3.5] w-full bg-zinc-900" />
-                    )}
-                  </div>
-
-                  <h2 className="mt-2 truncate text-sm font-medium sm:mt-3">
-                    {
-                      card.name
+                  <Link
+                    href={
+                      `/cards/${card.id}`
                     }
-                  </h2>
+                    className="group block min-w-0"
+                  >
+                    <div className="overflow-hidden rounded-xl bg-zinc-950">
+                      {card.image_url ? (
+                        <img
+                          src={
+                            card.image_url
+                          }
+                          alt={
+                            card.name
+                          }
+                          loading="lazy"
+                          className="aspect-[2.5/3.5] w-full object-contain transition duration-200 group-hover:scale-[1.02]"
+                        />
+                      ) : (
+                        <div className="aspect-[2.5/3.5] w-full bg-zinc-900" />
+                      )}
+                    </div>
 
-                  <p className="mt-1 truncate text-xs text-zinc-600">
-                    {
-                      card.rarity &&
-                      card.rarity !==
-                        'None'
-                        ? card.rarity
-                        : 'Pokémon card'
+                    <h2 className="mt-2 truncate text-sm font-medium sm:mt-3">
+                      {
+                        card.name
+                      }
+                    </h2>
+
+                    <p className="mt-1 truncate text-xs text-zinc-600">
+                      {
+                        card.rarity &&
+                        card.rarity !==
+                          'None'
+                          ? card.rarity
+                          : 'Pokémon card'
+                      }
+
+                      {card.illustrator
+                        ? ` · ${card.illustrator}`
+                        : ''}
+                    </p>
+                  </Link>
+
+                  <RemoveFromBinderButton
+                    cardId={
+                      card.id
                     }
-
-                    {card.illustrator
-                      ? ` · ${card.illustrator}`
-                      : ''}
-                  </p>
-                </Link>
+                    userId={
+                      user.id
+                    }
+                  />
+                </article>
               )
             )}
           </section>

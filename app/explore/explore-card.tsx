@@ -616,7 +616,7 @@ export default function ExploreCard({
           href={`/cards/${card.id}`}
           className="block"
         >
-          <div className="flex h-[48dvh] min-h-[330px] max-h-[510px] items-center justify-center overflow-hidden bg-zinc-950 sm:aspect-[2.5/3.5] sm:h-auto sm:max-h-none">
+          <div className="flex h-[42dvh] min-h-[280px] max-h-[430px] items-center justify-center overflow-hidden bg-zinc-950 sm:aspect-[2.5/3.5] sm:h-auto sm:max-h-none">
             <img
               src={
                 card.image_url!
@@ -634,7 +634,7 @@ export default function ExploreCard({
           </div>
         </Link>
 
-        <div className="p-3 sm:p-4">
+        <div className="p-2.5 sm:p-4">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <Link
@@ -668,7 +668,7 @@ export default function ExploreCard({
           </div>
 
           {card.illustrator ? (
-            <p className="mt-1.5 text-xs text-zinc-600">
+            <p className="mt-1 text-xs text-zinc-600 sm:mt-1.5">
               Illustrated by{' '}
               <span className="text-zinc-400">
                 {
@@ -678,7 +678,7 @@ export default function ExploreCard({
             </p>
           ) : null}
 
-          <div className="mt-3">
+          <div className="mt-2 sm:mt-3">
             <ReactionButtons
               key={
                 card.id
@@ -746,7 +746,7 @@ export default function ExploreCard({
         </div>
       </article>
 
-      <p className="mt-2 text-center text-[10px] text-zinc-700 sm:text-xs">
+      <p className="mt-1 text-center text-[10px] text-zinc-700 sm:mt-2 sm:text-xs">
         Tap the card to see more
       </p>
     </div>
