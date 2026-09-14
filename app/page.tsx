@@ -83,6 +83,9 @@ export default async function HomePage() {
   let friendActivityCards:
     CardRecord[] = []
 
+  let friendActivityLabels:
+    Record<string, string> = {}
+
   if (user) {
     const [
       reactionsResult,
@@ -493,15 +496,120 @@ export default async function HomePage() {
         (activityData ??
           []) as FriendReactionRow[]
 
-      const activityCardIds =
+      const activeFriendIds =
         Array.from(
           new Set(
             activity.map(
               (item) =>
-                item.card_id
+                item.user_id
             )
           )
+        )
+
+      const {
+        data: friendProfilesData,
+        error: friendProfilesError,
+      } =
+        activeFriendIds.length > 0
+          ? await supabase
+              .from('profiles')
+              .select(`
+                id,
+                username
+              `)
+              .in(
+                'id',
+                activeFriendIds
+              )
+          : {
+              data: [],
+              error: null,
+            }
+
+      if (friendProfilesError) {
+        console.error(
+          'Could not load friend usernames:',
+          friendProfilesError.message
+        )
+      }
+
+      const usernameById =
+        new Map(
+          (
+            (friendProfilesData ??
+              []) as {
+                id: string
+                username:
+                  | string
+                  | null
+              }[]
+          ).map(
+            (profile) => [
+              profile.id,
+              profile.username,
+            ]
+          )
+        )
+
+      const latestActivityByCard =
+        new Map<
+          string,
+          FriendReactionRow
+        >()
+
+      for (const item of activity) {
+        if (
+          !latestActivityByCard.has(
+            item.card_id
+          )
+        ) {
+          latestActivityByCard.set(
+            item.card_id,
+            item
+          )
+        }
+      }
+
+      const activityCardIds =
+        Array.from(
+          latestActivityByCard.keys()
         ).slice(0, 40)
+
+      friendActivityLabels =
+        Object.fromEntries(
+          activityCardIds.map(
+            (cardId) => {
+              const item =
+                latestActivityByCard.get(
+                  cardId
+                )
+
+              if (!item) {
+                return [
+                  cardId,
+                  '',
+                ]
+              }
+
+              const username =
+                usernameById.get(
+                  item.user_id
+                ) ??
+                'Friend'
+
+              const action =
+                item.reaction ===
+                'love'
+                  ? 'added to their collection'
+                  : 'liked this card'
+
+              return [
+                cardId,
+                `@${username} ${action}`,
+              ]
+            }
+          )
+        )
 
       if (
         activityCardIds.length > 0
@@ -848,6 +956,9 @@ export default async function HomePage() {
               }
               initialLovedCardIds={
                 favoriteCardIds
+              }
+              cardLabels={
+                friendActivityLabels
               }
             />
 

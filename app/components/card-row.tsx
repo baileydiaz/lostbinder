@@ -24,6 +24,10 @@ type Props = {
   cards: RowCard[]
   userId?: string | null
   initialLovedCardIds?: string[]
+  cardLabels?: Record<
+    string,
+    string
+  >
 }
 
 export default function CardRow({
@@ -31,6 +35,7 @@ export default function CardRow({
   cards,
   userId = null,
   initialLovedCardIds = [],
+  cardLabels = {},
 }: Props) {
   const [
     badCardIds,
@@ -497,6 +502,18 @@ export default function CardRow({
                         ? card.rarity
                         : 'Pokémon card'}
                     </p>
+
+                    {cardLabels[
+                      card.id
+                    ] ? (
+                      <p className="mt-1.5 truncate text-xs font-medium text-zinc-400">
+                        {
+                          cardLabels[
+                            card.id
+                          ]
+                        }
+                      </p>
+                    ) : null}
                   </Link>
 
                   {userId ? (
