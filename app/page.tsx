@@ -44,6 +44,18 @@ type DismissalRow = {
   card_id: string
 }
 
+type FriendshipRow = {
+  requester_id: string
+  addressee_id: string
+}
+
+type FriendReactionRow = {
+  user_id: string
+  card_id: string
+  reaction: 'like' | 'love'
+  updated_at: string
+}
+
 export default async function HomePage() {
   const supabase =
     await createClient()
@@ -67,6 +79,9 @@ export default async function HomePage() {
 
   let favoriteCardIds:
     string[] = []
+
+  let friendActivityCards:
+    CardRecord[] = []
 
   if (user) {
     const [
@@ -393,6 +408,173 @@ export default async function HomePage() {
 
   /*
    * -------------------------
+   * FRIENDS ACTIVITY
+   * -------------------------
+   */
+
+  if (user) {
+    const {
+      data: friendshipData,
+      error: friendshipError,
+    } = await supabase
+      .from('friendships')
+      .select(`
+        requester_id,
+        addressee_id
+      `)
+      .eq('status', 'accepted')
+      .or(
+        `requester_id.eq.${user.id},addressee_id.eq.${user.id}`
+      )
+
+    if (friendshipError) {
+      console.error(
+        'Could not load friends:',
+        friendshipError.message
+      )
+    }
+
+    const friendships =
+      (friendshipData ??
+        []) as FriendshipRow[]
+
+    const friendIds =
+      Array.from(
+        new Set(
+          friendships.map(
+            (friendship) =>
+              friendship
+                .requester_id ===
+              user.id
+                ? friendship
+                    .addressee_id
+                : friendship
+                    .requester_id
+          )
+        )
+      )
+
+    if (friendIds.length > 0) {
+      const {
+        data: activityData,
+        error: activityError,
+      } = await supabase
+        .from('card_reactions')
+        .select(`
+          user_id,
+          card_id,
+          reaction,
+          updated_at
+        `)
+        .in(
+          'user_id',
+          friendIds
+        )
+        .in(
+          'reaction',
+          ['like', 'love']
+        )
+        .order(
+          'updated_at',
+          {
+            ascending: false,
+          }
+        )
+        .limit(80)
+
+      if (activityError) {
+        console.error(
+          'Could not load friend activity:',
+          activityError.message
+        )
+      }
+
+      const activity =
+        (activityData ??
+          []) as FriendReactionRow[]
+
+      const activityCardIds =
+        Array.from(
+          new Set(
+            activity.map(
+              (item) =>
+                item.card_id
+            )
+          )
+        ).slice(0, 40)
+
+      if (
+        activityCardIds.length > 0
+      ) {
+        const {
+          data: activityCardsData,
+          error: activityCardsError,
+        } = await supabase
+          .from('cards')
+          .select(`
+            id,
+            name,
+            rarity,
+            image_url,
+            set_id,
+            category
+          `)
+          .eq(
+            'category',
+            'Pokemon'
+          )
+          .not(
+            'image_url',
+            'is',
+            null
+          )
+          .in(
+            'id',
+            activityCardIds
+          )
+
+        if (activityCardsError) {
+          console.error(
+            'Could not load friend activity cards:',
+            activityCardsError
+              .message
+          )
+        }
+
+        const activityCardMap =
+          new Map(
+            (
+              (activityCardsData ??
+                []) as CardRecord[]
+            ).map(
+              (card) => [
+                card.id,
+                card,
+              ]
+            )
+          )
+
+        friendActivityCards =
+          activityCardIds
+            .map(
+              (cardId) =>
+                activityCardMap.get(
+                  cardId
+                )
+            )
+            .filter(
+              (
+                card
+              ): card is CardRecord =>
+                card !==
+                undefined
+            )
+      }
+    }
+  }
+
+  /*
+   * -------------------------
    * CURATED CONTENT
    * -------------------------
    */
@@ -637,7 +819,7 @@ export default async function HomePage() {
         lovedCards.length > 0 ? (
           <section className="mt-8 sm:mt-10">
             <CardRow
-              title="Your Loves"
+              title="Your Collection"
               cards={
                 lovedCards as RowCard[]
               }
@@ -652,6 +834,31 @@ export default async function HomePage() {
           </section>
         ) : null}
 
+        {user &&
+        friendActivityCards.length >
+          0 ? (
+          <section className="mt-8 sm:mt-10">
+            <CardRow
+              title="Friends Activity"
+              cards={
+                friendActivityCards as RowCard[]
+              }
+              userId={
+                user.id
+              }
+              initialLovedCardIds={
+                favoriteCardIds
+              }
+            />
+
+            <p className="-mt-1 text-xs text-zinc-700">
+              Cards your friends have been
+              liking and adding to their
+              collections.
+            </p>
+          </section>
+        ) : null}
+
         <section
           className={
             user &&
@@ -659,6 +866,8 @@ export default async function HomePage() {
               recommendedCards.length >
                 0 ||
               lovedCards.length >
+                0 ||
+              friendActivityCards.length >
                 0
             )
               ? 'mt-8 space-y-10 sm:mt-10 sm:space-y-14'

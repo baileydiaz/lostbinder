@@ -1,15 +1,15 @@
 'use client'
 
 import Link from 'next/link'
-
 import {
   useEffect,
   useRef,
   useState,
 } from 'react'
 
-import HomeLoveButton
-  from '@/app/components/home-love-button'
+import {
+  createClient,
+} from '@/lib/supabase/client'
 
 export type RowCard = {
   id: string
@@ -36,9 +36,28 @@ export default function CardRow({
     badCardIds,
     setBadCardIds,
   ] =
-    useState<
-      Set<string>
-    >(new Set())
+    useState<Set<string>>(
+      new Set()
+    )
+
+  const [
+    lovedCardIds,
+    setLovedCardIds,
+  ] =
+    useState<Set<string>>(
+      () =>
+        new Set(
+          initialLovedCardIds
+        )
+    )
+
+  const [
+    savingCardIds,
+    setSavingCardIds,
+  ] =
+    useState<Set<string>>(
+      new Set()
+    )
 
   const [
     canScrollLeft,
@@ -53,20 +72,19 @@ export default function CardRow({
     useState(false)
 
   const scrollRef =
-    useRef<
-      HTMLDivElement | null
-    >(null)
-
-  const initialLovedSet =
-    new Set(
-      initialLovedCardIds
+    useRef<HTMLDivElement | null>(
+      null
     )
 
   const visibleCards =
     cards.filter(
       (card) =>
-        Boolean(card.image_url) &&
-        !badCardIds.has(card.id)
+        Boolean(
+          card.image_url
+        ) &&
+        !badCardIds.has(
+          card.id
+        )
     )
 
   function hideBrokenCard(
@@ -78,7 +96,6 @@ export default function CardRow({
           new Set(current)
 
         next.add(cardId)
-
         return next
       }
     )
@@ -120,7 +137,8 @@ export default function CardRow({
 
     const amount =
       Math.max(
-        element.clientWidth * 0.8,
+        element.clientWidth *
+          0.8,
         400
       )
 
@@ -131,6 +149,197 @@ export default function CardRow({
           : amount,
       behavior: 'smooth',
     })
+  }
+
+  async function toggleCollection(
+    cardId: string
+  ) {
+    if (
+      !userId ||
+      savingCardIds.has(
+        cardId
+      )
+    ) {
+      return
+    }
+
+    const wasLoved =
+      lovedCardIds.has(cardId)
+
+    setLovedCardIds(
+      (current) => {
+        const next =
+          new Set(current)
+
+        if (wasLoved) {
+          next.delete(cardId)
+        } else {
+          next.add(cardId)
+        }
+
+        return next
+      }
+    )
+
+    setSavingCardIds(
+      (current) =>
+        new Set([
+          ...current,
+          cardId,
+        ])
+    )
+
+    const supabase =
+      createClient()
+
+    let saveError:
+      | Error
+      | null = null
+
+    if (wasLoved) {
+      const {
+        error:
+          favoriteError,
+      } = await supabase
+        .from(
+          'card_favorites'
+        )
+        .delete()
+        .eq(
+          'user_id',
+          userId
+        )
+        .eq(
+          'card_id',
+          cardId
+        )
+
+      if (favoriteError) {
+        saveError =
+          new Error(
+            favoriteError.message
+          )
+      } else {
+        const {
+          error:
+            reactionError,
+        } = await supabase
+          .from(
+            'card_reactions'
+          )
+          .delete()
+          .eq(
+            'user_id',
+            userId
+          )
+          .eq(
+            'card_id',
+            cardId
+          )
+          .eq(
+            'reaction',
+            'love'
+          )
+
+        if (reactionError) {
+          saveError =
+            new Error(
+              reactionError.message
+            )
+        }
+      }
+    } else {
+      const {
+        error:
+          favoriteError,
+      } = await supabase
+        .from(
+          'card_favorites'
+        )
+        .upsert(
+          {
+            user_id:
+              userId,
+            card_id:
+              cardId,
+          },
+          {
+            onConflict:
+              'user_id,card_id',
+          }
+        )
+
+      if (favoriteError) {
+        saveError =
+          new Error(
+            favoriteError.message
+          )
+      } else {
+        const {
+          error:
+            reactionError,
+        } = await supabase
+          .from(
+            'card_reactions'
+          )
+          .upsert(
+            {
+              user_id:
+                userId,
+              card_id:
+                cardId,
+              reaction:
+                'love',
+              updated_at:
+                new Date()
+                  .toISOString(),
+            },
+            {
+              onConflict:
+                'user_id,card_id',
+            }
+          )
+
+        if (reactionError) {
+          saveError =
+            new Error(
+              reactionError.message
+            )
+        }
+      }
+    }
+
+    if (saveError) {
+      console.error(
+        'Could not update collection:',
+        saveError.message
+      )
+
+      setLovedCardIds(
+        (current) => {
+          const next =
+            new Set(current)
+
+          if (wasLoved) {
+            next.add(cardId)
+          } else {
+            next.delete(cardId)
+          }
+
+          return next
+        }
+      )
+    }
+
+    setSavingCardIds(
+      (current) => {
+        const next =
+          new Set(current)
+
+        next.delete(cardId)
+        return next
+      }
+    )
   }
 
   useEffect(() => {
@@ -178,7 +387,8 @@ export default function CardRow({
   }, [visibleCards.length])
 
   if (
-    visibleCards.length === 0
+    visibleCards.length ===
+    0
   ) {
     return null
   }
@@ -194,7 +404,9 @@ export default function CardRow({
           <button
             type="button"
             onClick={() =>
-              scrollRow('left')
+              scrollRow(
+                'left'
+              )
             }
             disabled={
               !canScrollLeft
@@ -208,7 +420,9 @@ export default function CardRow({
           <button
             type="button"
             onClick={() =>
-              scrollRow('right')
+              scrollRow(
+                'right'
+              )
             }
             disabled={
               !canScrollRight
@@ -235,58 +449,86 @@ export default function CardRow({
           className="flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth pb-3 pr-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {visibleCards.map(
-            (card) => (
-              <article
-                key={card.id}
-                className="group w-[160px] flex-none snap-start sm:w-[180px] md:w-[195px] lg:w-[205px]"
-              >
-                <div className="relative">
+            (card) => {
+              const isLoved =
+                lovedCardIds.has(
+                  card.id
+                )
+
+              const isSaving =
+                savingCardIds.has(
+                  card.id
+                )
+
+              return (
+                <div
+                  key={card.id}
+                  className="group relative w-[160px] flex-none snap-start sm:w-[180px] md:w-[195px] lg:w-[205px]"
+                >
                   <Link
                     href={`/cards/${card.id}`}
-                    className="block overflow-hidden rounded-xl transition duration-200 ease-out group-hover:-translate-y-1"
+                    className="block"
                   >
-                    <img
-                      src={card.image_url!}
-                      alt={card.name}
-                      onError={() =>
-                        hideBrokenCard(
-                          card.id
-                        )
-                      }
-                      className="aspect-[2.5/3.5] w-full object-contain transition duration-200 ease-out group-hover:scale-[1.045]"
-                    />
+                    <div className="overflow-hidden rounded-xl transition duration-200 ease-out group-hover:-translate-y-1">
+                      <img
+                        src={
+                          card.image_url!
+                        }
+                        alt={
+                          card.name
+                        }
+                        onError={() =>
+                          hideBrokenCard(
+                            card.id
+                          )
+                        }
+                        className="aspect-[2.5/3.5] w-full object-contain transition duration-200 ease-out group-hover:scale-[1.045]"
+                      />
+                    </div>
+
+                    <h3 className="mt-3 truncate text-sm font-semibold text-zinc-200 transition group-hover:text-white">
+                      {card.name}
+                    </h3>
+
+                    <p className="mt-1 truncate text-xs text-zinc-600">
+                      {card.rarity &&
+                      card.rarity !==
+                        'None'
+                        ? card.rarity
+                        : 'Pokémon card'}
+                    </p>
                   </Link>
 
-                  <div className="absolute right-2 top-2 z-10">
-                    <HomeLoveButton
-                      cardId={card.id}
-                      userId={userId}
-                      initialLoved={
-                        initialLovedSet.has(
+                  {userId ? (
+                    <button
+                      type="button"
+                      disabled={
+                        isSaving
+                      }
+                      onClick={() =>
+                        void toggleCollection(
                           card.id
                         )
                       }
-                    />
-                  </div>
+                      aria-label={
+                        isLoved
+                          ? `Remove ${card.name} from collection`
+                          : `Add ${card.name} to collection`
+                      }
+                      className={`absolute right-2 top-2 z-20 flex h-9 w-9 items-center justify-center rounded-full border text-lg shadow-lg backdrop-blur transition ${
+                        isLoved
+                          ? 'border-red-400/40 bg-black/75 text-red-500'
+                          : 'border-white/15 bg-black/70 text-zinc-300 hover:border-white/35 hover:text-white'
+                      } disabled:opacity-60`}
+                    >
+                      {isLoved
+                        ? '♥'
+                        : '♡'}
+                    </button>
+                  ) : null}
                 </div>
-
-                <Link
-                  href={`/cards/${card.id}`}
-                  className="block"
-                >
-                  <h3 className="mt-3 truncate text-sm font-semibold text-zinc-200 transition group-hover:text-white">
-                    {card.name}
-                  </h3>
-
-                  <p className="mt-1 truncate text-xs text-zinc-600">
-                    {card.rarity &&
-                    card.rarity !== 'None'
-                      ? card.rarity
-                      : 'Pokémon card'}
-                  </p>
-                </Link>
-              </article>
-            )
+              )
+            }
           )}
         </div>
       </div>

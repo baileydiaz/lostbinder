@@ -74,14 +74,16 @@ export default function MobileNav({
               Explore
             </Link>
 
-            {isLoggedIn ? (
-              <Link
-                href="/account"
-                className="max-w-[105px] truncate text-sm font-medium text-zinc-400 transition hover:text-white"
-              >
-                {accountLabel}
-              </Link>
-            ) : null}
+            <Link
+              href={
+                isLoggedIn
+                  ? '/account'
+                  : '/auth/login'
+              }
+              className="max-w-[105px] truncate text-sm font-medium text-zinc-400 transition hover:text-white"
+            >
+              {accountLabel}
+            </Link>
 
             <button
               type="button"
@@ -219,7 +221,7 @@ export default function MobileNav({
                 }
                 className="flex min-h-14 items-center border-b border-white/5 text-sm font-medium text-zinc-300 transition hover:text-white"
               >
-                My Binder
+                Favorites
               </Link>
 
               <Link
@@ -244,6 +246,15 @@ export default function MobileNav({
             </Link>
           )}
 
+          <Link
+            href="/"
+            onClick={
+              closeMenu
+            }
+            className="flex min-h-14 items-center text-sm font-medium text-zinc-500 transition hover:text-white"
+          >
+            Home
+          </Link>
         </nav>
 
         <div className="border-t border-white/10 px-5 py-4">
