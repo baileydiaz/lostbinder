@@ -21,12 +21,19 @@ export default async function SignUpPage({
         padding: '24px',
       }}
     >
-      <h1>Create a LostBinder account</h1>
+      <h1
+        style={{
+          fontSize: '28px',
+          fontWeight: '700',
+        }}
+      >
+        Create a LostBinder account
+      </h1>
 
       {params.error && (
         <p
           style={{
-            color: 'crimson',
+            color: '#f87171',
             marginTop: '16px',
           }}
         >
@@ -37,7 +44,7 @@ export default async function SignUpPage({
       {params.success && (
         <p
           style={{
-            color: 'green',
+            color: '#4ade80',
             marginTop: '16px',
           }}
         >
@@ -55,9 +62,15 @@ export default async function SignUpPage({
         }}
       >
         <input
-          name="displayName"
+          name="username"
           type="text"
-          placeholder="Display name"
+          placeholder="Username"
+          required
+          minLength={3}
+          maxLength={30}
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
           style={{
             padding: '12px',
             fontSize: '16px',
@@ -73,6 +86,8 @@ export default async function SignUpPage({
           type="email"
           placeholder="Email"
           required
+          autoCapitalize="none"
+          autoCorrect="off"
           style={{
             padding: '12px',
             fontSize: '16px',
@@ -117,7 +132,11 @@ export default async function SignUpPage({
         </button>
       </form>
 
-      <p style={{ marginTop: '20px' }}>
+      <p
+        style={{
+          marginTop: '24px',
+        }}
+      >
         Already have an account?{' '}
         <Link href="/auth/login">
           Log in
