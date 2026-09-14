@@ -616,7 +616,7 @@ export default function ExploreCard({
           href={`/cards/${card.id}`}
           className="block"
         >
-          <div className="flex h-[46dvh] min-h-[300px] max-h-[470px] items-center justify-center overflow-hidden bg-zinc-950 sm:aspect-[2.5/3.5] sm:h-auto sm:max-h-none">
+          <div className="flex h-[calc(100dvh-300px)] min-h-[300px] max-h-[520px] items-center justify-center overflow-hidden bg-zinc-950 sm:aspect-[2.5/3.5] sm:h-auto sm:max-h-none">
             <img
               src={
                 card.image_url!
