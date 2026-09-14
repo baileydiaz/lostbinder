@@ -102,12 +102,15 @@ export default async function SignUpPage({
         <button
           type="submit"
           style={{
-            padding: '12px',
+            marginTop: '10px',
+            padding: '14px 18px',
             fontSize: '16px',
+            fontWeight: '600',
+            cursor: 'pointer',
             backgroundColor: 'white',
             color: 'black',
-            border: '1px solid #d4d4d4',
-            borderRadius: '6px',
+            border: 'none',
+            borderRadius: '8px',
           }}
         >
           Sign up
