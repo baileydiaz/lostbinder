@@ -48,13 +48,12 @@ export default async function LoginPage({
           placeholder="Email"
           required
           style={{
-            padding: '12px 14px',
+            padding: '12px',
             fontSize: '16px',
-            backgroundColor: '#18181b',
-            color: 'white',
-            border: '1px solid #3f3f46',
-            borderRadius: '10px',
-            outline: 'none',
+            backgroundColor: 'white',
+            color: 'black',
+            border: '1px solid #d4d4d4',
+            borderRadius: '6px',
           }}
         />
 
@@ -64,13 +63,12 @@ export default async function LoginPage({
           placeholder="Password"
           required
           style={{
-            padding: '12px 14px',
+            padding: '12px',
             fontSize: '16px',
-            backgroundColor: '#18181b',
-            color: 'white',
-            border: '1px solid #3f3f46',
-            borderRadius: '10px',
-            outline: 'none',
+            backgroundColor: 'white',
+            color: 'black',
+            border: '1px solid #d4d4d4',
+            borderRadius: '6px',
           }}
         />
 
@@ -79,7 +77,10 @@ export default async function LoginPage({
           style={{
             padding: '12px',
             fontSize: '16px',
-            cursor: 'pointer',
+            backgroundColor: 'white',
+            color: 'black',
+            border: '1px solid #d4d4d4',
+            borderRadius: '6px',
           }}
         >
           Log in

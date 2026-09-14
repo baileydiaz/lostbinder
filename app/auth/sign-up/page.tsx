@@ -61,6 +61,10 @@ export default async function SignUpPage({
           style={{
             padding: '12px',
             fontSize: '16px',
+            backgroundColor: 'white',
+            color: 'black',
+            border: '1px solid #d4d4d4',
+            borderRadius: '6px',
           }}
         />
 
@@ -72,6 +76,10 @@ export default async function SignUpPage({
           style={{
             padding: '12px',
             fontSize: '16px',
+            backgroundColor: 'white',
+            color: 'black',
+            border: '1px solid #d4d4d4',
+            borderRadius: '6px',
           }}
         />
 
@@ -84,6 +92,10 @@ export default async function SignUpPage({
           style={{
             padding: '12px',
             fontSize: '16px',
+            backgroundColor: 'white',
+            color: 'black',
+            border: '1px solid #d4d4d4',
+            borderRadius: '6px',
           }}
         />
 
@@ -92,7 +104,10 @@ export default async function SignUpPage({
           style={{
             padding: '12px',
             fontSize: '16px',
-            cursor: 'pointer',
+            backgroundColor: 'white',
+            color: 'black',
+            border: '1px solid #d4d4d4',
+            borderRadius: '6px',
           }}
         >
           Sign up
