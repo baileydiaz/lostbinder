@@ -32,6 +32,7 @@ type Props = {
 
 export default function CardRow({
   title,
+  description,
   cards,
   userId = null,
   initialLovedCardIds = [],
@@ -401,9 +402,17 @@ export default function CardRow({
   return (
     <section className="relative py-4">
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-xl font-semibold tracking-tight text-white">
-          {title}
-        </h2>
+        <div>
+          <h2 className="text-xl font-semibold tracking-tight text-white">
+            {title}
+          </h2>
+
+          {description ? (
+            <p className="mt-1 text-sm text-zinc-600">
+              {description}
+            </p>
+          ) : null}
+        </div>
 
         <div className="hidden items-center gap-2 md:flex">
           <button

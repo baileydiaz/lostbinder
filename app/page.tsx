@@ -990,17 +990,12 @@ export default async function HomePage() {
               <div
                 key={row.id}
               >
-                {row.description ? (
-                  <p className="mb-3 text-sm text-zinc-600">
-                    {
-                      row.description
-                    }
-                  </p>
-                ) : null}
-
                 <CardRow
                   title={
                     row.title
+                  }
+                  description={
+                    row.description
                   }
                   cards={
                     row.cards

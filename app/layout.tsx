@@ -4,6 +4,7 @@ import type {
 } from 'next'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { Geist } from 'next/font/google'
 
 import './globals.css'
@@ -141,9 +142,23 @@ export default async function RootLayout({
           <nav className="mx-auto hidden max-w-[1400px] items-center gap-5 px-4 py-3 md:flex">
             <Link
               href="/"
-              className="shrink-0 text-[22px] font-bold tracking-[-0.04em] text-white"
+              aria-label="LostBinder home"
+              className="shrink-0"
             >
-              LostBinder
+              {/* Temporary text logo */}
+              <span className="text-[22px] font-bold tracking-[-0.04em] text-white">
+                LostBinder
+              </span>
+
+              {/* Image logo kept here for when it is ready */}
+              <Image
+                src="/the-lost-binder-logo.png"
+                alt="The Lost Binder"
+                width={354}
+                height={219}
+                priority
+                className="hidden"
+              />
             </Link>
 
             <div className="flex items-center gap-5">

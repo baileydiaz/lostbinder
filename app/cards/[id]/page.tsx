@@ -80,7 +80,8 @@ export default async function CardPage({
     .select(`
       id,
       name,
-      release_date
+      release_date,
+      total_official
     `)
     .eq(
       'id',
@@ -202,6 +203,41 @@ export default async function CardPage({
         ).getFullYear()
       : null
 
+  const collectorNumber =
+    card.local_id &&
+    set?.total_official
+      ? `${card.local_id}/${set.total_official}`
+      : card.local_id
+
+  const tcgplayerQuery =
+    [
+      card.name,
+      set?.name,
+      collectorNumber,
+    ]
+      .filter(Boolean)
+      .join(' ')
+
+  const ebayQuery =
+    [
+      card.name,
+      set?.name,
+      collectorNumber,
+      'Pokemon',
+    ]
+      .filter(Boolean)
+      .join(' ')
+
+  const tcgplayerUrl =
+    `https://www.tcgplayer.com/search/pokemon/product?productLineName=pokemon&q=${encodeURIComponent(
+      tcgplayerQuery
+    )}&view=grid`
+
+  const ebayUrl =
+    `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(
+      ebayQuery
+    )}`
+
   return (
     <main className="min-h-screen bg-black px-5 py-8 text-white sm:px-8">
       <div className="mx-auto max-w-5xl">
@@ -318,6 +354,32 @@ export default async function CardPage({
                   }
                 />
               ) : null}
+            </div>
+
+            <div className="mt-8">
+              <p className="text-xs uppercase tracking-wider text-zinc-700">
+                Find this card
+              </p>
+
+              <div className="mt-3 flex flex-wrap gap-3">
+                <a
+                  href={tcgplayerUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-zinc-300 transition hover:border-white/35 hover:text-white"
+                >
+                  Search TCGplayer
+                </a>
+
+                <a
+                  href={ebayUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-zinc-300 transition hover:border-white/35 hover:text-white"
+                >
+                  Search eBay
+                </a>
+              </div>
             </div>
 
             <Link

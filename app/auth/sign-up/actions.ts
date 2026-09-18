@@ -121,6 +121,6 @@ export async function signup(
   }
 
   redirect(
-    '/auth/sign-up?success=Check your email to confirm your account.'
+    '/auth/sign-up?success=Check your email to confirm your account. Don%27t see it? Check your spam or junk folder.'
   )
 }

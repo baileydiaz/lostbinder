@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 
 import {
   useEffect,
@@ -61,9 +62,23 @@ export default function MobileNav({
         <div className="flex items-center gap-3">
           <Link
             href="/"
-            className="shrink-0 text-[21px] font-bold tracking-[-0.04em] text-white"
+            aria-label="LostBinder home"
+            className="shrink-0"
           >
-            LostBinder
+            {/* Temporary text logo */}
+            <span className="text-[21px] font-bold tracking-[-0.04em] text-white">
+              LostBinder
+            </span>
+
+            {/* Image logo kept here for when it is ready */}
+            <Image
+              src="/the-lost-binder-logo.png"
+              alt="The Lost Binder"
+              width={354}
+              height={219}
+              priority
+              className="hidden"
+            />
           </Link>
 
           <div className="ml-auto flex items-center gap-3">
