@@ -21,13 +21,11 @@ export type RowCard = {
 
 type Props = {
   title: string
+  description?: string | null
   cards: RowCard[]
   userId?: string | null
   initialLovedCardIds?: string[]
-  cardLabels?: Record<
-    string,
-    string
-  >
+  cardLabels?: Record<string, string>
 }
 
 export default function CardRow({
