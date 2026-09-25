@@ -88,6 +88,7 @@ export default function AddToBinder({ cardId, userId }: { cardId: string; userId
         setBinders(current => current.map(item => item.id === binder.id
           ? { ...item, hasCard: wants, count: item.count + (wants ? 1 : -1) } : item))
       }
+      setOpen(false)
       setMessage('Binder selections saved.')
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Could not save binder selections.')
