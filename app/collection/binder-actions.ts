@@ -71,11 +71,13 @@ export async function updateBinder(form: FormData) {
   const description = String(form.get('description') ?? '').trim().slice(0, 500)
   if (!title) redirect('/collection/binders/' + id + '?error=title')
   const isPublic = form.get('is_public') === 'on'
-  await supabase.from('user_binders').update({ title, description, is_public: isPublic })
-    .eq('id', id).eq('user_id', user.id)
+  const { data, error } = await supabase.from('user_binders')
+    .update({ title, description, is_public: isPublic })
+    .eq('id', id).eq('user_id', user.id).select('id').maybeSingle()
+  if (error || !data) redirect('/collection/binders/' + id + '?error=settings')
   revalidatePath('/collection')
   revalidatePath('/collection/binders/' + id)
-  redirect('/collection/binders/' + id)
+  redirect('/collection/binders/' + id + '?saved=1')
 }
 
 export async function deleteBinder(form: FormData) {
