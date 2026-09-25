@@ -16,7 +16,7 @@ export default function CreateBinderPanel({ hasDreamBinder }: { hasDreamBinder: 
         className="inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-black transition hover:bg-zinc-200"
       >
         <span aria-hidden="true">{open ? '−' : '+'}</span>
-        {open ? 'Cancel' : 'Create binder'}
+        {open ? 'Cancel' : 'Create Binder'}
       </button>
       {open && (
         <div id="create-binder-panel" className="mt-4 max-w-xl rounded-xl border border-white/10 bg-black p-4 sm:p-5">
