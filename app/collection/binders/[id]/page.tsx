@@ -3,6 +3,7 @@ import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { addBinderCard, removeBinderCard, updateBinder, deleteBinder } from '../../binder-actions'
 import SaveBinderButton from '../../save-binder-button'
+import BinderSettingsPanel from './binder-settings-panel'
 
 type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ error?: string; saved?: string }> }
 type Card = { id: string; name: string; image_url: string | null; rarity: string | null }
@@ -37,7 +38,7 @@ export default async function BinderPage({ params, searchParams }: Props) {
   return (
     <main className="min-h-screen bg-black px-4 py-8 text-white sm:px-8">
       <div className="mx-auto max-w-6xl">
-        <Link href="/collection" className="text-sm text-zinc-400 hover:text-white">← My Binder</Link>
+        <Link href="/collection" className="text-sm text-zinc-400 hover:text-white">← My Binders</Link>
         <div className="mt-7 flex flex-wrap items-end justify-between gap-4">
           <div>
             <p className="text-xs uppercase tracking-widest text-zinc-500">{binder.kind === 'dream' ? 'Dream Binder · Nine-card showcase' : 'Custom Binder'}</p>
@@ -47,6 +48,20 @@ export default async function BinderPage({ params, searchParams }: Props) {
             {binder.is_public && <Link href={'/binders/' + id} className="mt-3 inline-block text-sm text-emerald-400 underline-offset-4 hover:underline">View public binder →</Link>}
           </div>
         </div>
+        <BinderSettingsPanel initiallyOpen={Boolean(error === "settings" || error === "title")}>
+          <h2 className="text-lg font-semibold">Binder settings</h2>
+          <form action={updateBinder} className="mt-4 max-w-lg space-y-4">
+            <input type="hidden" name="binder_id" value={id} />
+            <label className="block text-sm">Name<input name="title" required maxLength={60} defaultValue={binder.title} className="mt-2 w-full rounded-lg border border-white/20 bg-black p-3" /></label>
+            <label className="block text-sm">Description<textarea name="description" maxLength={500} defaultValue={binder.description} rows={3} className="mt-2 w-full rounded-lg border border-white/20 bg-black p-3" /></label>
+            <label className="flex items-center gap-3 text-sm"><input type="checkbox" name="is_public" defaultChecked={binder.is_public} /> Public binder (visible to anyone with access)</label>
+            <SaveBinderButton />
+          </form>
+          <form action={deleteBinder} className="mt-8">
+            <input type="hidden" name="binder_id" value={id} />
+            <button className="text-sm text-red-400 hover:text-red-300">Delete this binder</button>
+          </form>
+        </BinderSettingsPanel>
         {saved === '1' && <p role="status" className="mt-4 rounded-lg border border-emerald-600/30 bg-emerald-950/30 p-3 text-sm text-emerald-300">✓ Binder settings saved. Your changes are live.</p>}
         {error && <p role="alert" className="mt-4 text-sm text-red-400">{error === 'full' ? 'Your Dream Binder is full. Remove a card to make room.' : error === 'title' ? 'Please enter a binder name.' : 'Could not save your change. Please try again.'}</p>}
         <section className="mt-8 grid grid-cols-3 gap-2 rounded-2xl border border-white/10 bg-zinc-950 p-3 sm:gap-5 sm:p-6">
@@ -81,20 +96,7 @@ export default async function BinderPage({ params, searchParams }: Props) {
           </div>}
           {!available.length && !full && <p className="mt-4 text-sm text-zinc-500">Love cards in Explore to add them here.</p>}
         </section>
-        <section className="mt-12 rounded-xl border border-white/10 p-5">
-          <h2 className="text-lg font-semibold">Binder settings</h2>
-          <form action={updateBinder} className="mt-4 max-w-lg space-y-4">
-            <input type="hidden" name="binder_id" value={id} />
-            <label className="block text-sm">Name<input name="title" required maxLength={60} defaultValue={binder.title} className="mt-2 w-full rounded-lg border border-white/20 bg-black p-3" /></label>
-            <label className="block text-sm">Description<textarea name="description" maxLength={500} defaultValue={binder.description} rows={3} className="mt-2 w-full rounded-lg border border-white/20 bg-black p-3" /></label>
-            <label className="flex items-center gap-3 text-sm"><input type="checkbox" name="is_public" defaultChecked={binder.is_public} /> Public binder (visible to anyone with access)</label>
-            <SaveBinderButton />
-          </form>
-          <form action={deleteBinder} className="mt-8">
-            <input type="hidden" name="binder_id" value={id} />
-            <button className="text-sm text-red-400 hover:text-red-300">Delete this binder</button>
-          </form>
-        </section>
+
       </div>
     </main>
   )
