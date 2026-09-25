@@ -291,6 +291,41 @@ export default async function HomePage() {
   )
   recommendedCards = homeRecommendations
 
+  // The logged-out hero is an artwork showcase, not a ranking of popular cards.
+  // Select lesser-known Pokémon illustrated by distinctive artists from our own catalog.
+  const showcaseArtists = [
+    'Tomokazu Komiya',
+    'Yuka Morii',
+    'Asako Ito',
+    'Sachiko Adachi',
+    'HYOGONOSUKE',
+  ]
+  const { data: showcaseData } = !user
+    ? await supabase.from('cards')
+        .select('id,name,image_url,illustrator')
+        .eq('category', 'Pokemon')
+        .not('image_url', 'is', null)
+        .in('illustrator', showcaseArtists)
+        .limit(250)
+    : { data: [] }
+
+  const featuredNames = ['Drowzee', 'Gloom', 'Slowpoke', 'Ditto', 'Claydol', 'Wooper', 'Shuckle']
+  const showcaseCards = (showcaseData ?? [])
+    .filter(card => !['Pikachu', 'Charizard', 'Umbreon', 'Rayquaza', 'Mewtwo'].some(name => card.name.includes(name)))
+    .sort((a, b) => {
+      const aRank = featuredNames.findIndex(name => a.name === name)
+      const bRank = featuredNames.findIndex(name => b.name === name)
+      return (aRank < 0 ? 999 : aRank) - (bRank < 0 ? 999 : bRank)
+    })
+  const showcaseArtistsUsed = new Set<string>()
+  const showcaseNamesUsed = new Set<string>()
+  const heroCards = user ? homeRecommendations.slice(0, 3) : showcaseCards.filter(card => {
+    if (!card.illustrator || showcaseArtistsUsed.has(card.illustrator) || showcaseNamesUsed.has(card.name)) return false
+    showcaseArtistsUsed.add(card.illustrator)
+    showcaseNamesUsed.add(card.name)
+    return true
+  }).slice(0, 3)
+
   /*
    * -------------------------
    * FRIENDS ACTIVITY
@@ -756,10 +791,10 @@ export default async function HomePage() {
                 {user ? "YOUR DAILY DISCOVERY" : "POKÉMON ART, REDISCOVERED"}
               </span>
               <h1 className="mt-5 text-4xl font-semibold leading-[1.08] tracking-tight sm:text-5xl">
-                {user ? "Find your next favorite card." : "Your favorite Pokémon card might be one you’ve never seen."}
+                {user ? "Find your next favorite card." : "Forget the price tag. Fall in love with the art."}
               </h1>
               <p className="mt-4 max-w-lg text-sm leading-6 text-zinc-400 sm:text-base">
-                {user ? "Explore Pokémon artwork picked around your tastes, with something unexpected in every session." : "Go beyond the chase cards. Discover incredible artwork, uncover hidden gems, and start building a collection that feels like yours."}
+                {user ? "Explore Pokémon artwork picked around your tastes, with something unexpected in every session." : "Take money out of the equation. Discover overlooked Pokémon artwork, appreciate each card on its own, and build a personal collection around what you love—not what it costs."}
               </p>
               <div className="mt-7 flex flex-wrap items-center gap-3">
                 <Link href="/explore" className="rounded-full bg-white px-6 py-3 text-sm font-semibold text-black transition hover:bg-zinc-200">
@@ -769,7 +804,7 @@ export default async function HomePage() {
               </div>
             </div>
             <div className="flex min-h-[210px] items-center justify-center gap-3 sm:min-h-[280px]">
-              {homeRecommendations.slice(0, 3).map((card, index) => (
+              {heroCards.map((card, index) => (
                 <Link
                   key={card.id}
                   href={`/cards/${card.id}`}
@@ -779,7 +814,7 @@ export default async function HomePage() {
                   <img src={card.image_url ?? ''} alt={card.name} className="w-full rounded-xl shadow-2xl shadow-black/70" />
                 </Link>
               ))}
-              {homeRecommendations.length === 0 ? <p className="text-sm text-zinc-500">Thousands of cards. One you haven’t discovered yet.</p> : null}
+              {heroCards.length === 0 ? <p className="text-sm text-zinc-500">Thousands of cards. One you haven’t discovered yet.</p> : null}
             </div>
           </div>
         </section>
