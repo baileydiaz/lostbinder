@@ -83,14 +83,17 @@ export default async function BinderPage({ params, searchParams }: Props) {
         </section>
         <section className="mt-10">
           <h2 className="text-xl font-semibold">Add cards from your favorites</h2>
-          <p className="mt-2 text-sm text-zinc-500">{full ? 'Your nine-card Dream Binder is full.' : 'Cards you love can be placed in multiple curated binders.'}</p>
+          <p className="mt-2 text-sm text-zinc-500">{full ? 'Your nine-card Dream Binder is full.' : 'Tap a card to add it. A card can belong to multiple binders.'}</p>
           {!full && <div className="mt-5 grid grid-cols-3 gap-3 sm:grid-cols-5 lg:grid-cols-7">
             {available.map((card) => (
               <form action={addBinderCard} key={card.id} className="min-w-0">
                 <input type="hidden" name="binder_id" value={id} /><input type="hidden" name="card_id" value={card.id} />
-                {card.image_url ? <img src={card.image_url} alt={card.name} loading="lazy" className="aspect-[2.5/3.5] w-full object-contain" /> : <div className="aspect-[2.5/3.5] bg-zinc-900" />}
-                <p className="mt-1 truncate text-xs">{card.name}</p>
-                <button className="mt-2 w-full rounded-lg border border-white/20 px-2 py-2 text-xs hover:bg-white hover:text-black">Add card</button>
+                <button type="submit" aria-label={'Add ' + card.name + ' to ' + binder.title} title={'Add ' + card.name + ' to binder'} className="group block w-full cursor-pointer text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
+                  <span className="block overflow-hidden rounded-lg border border-white/10 bg-black transition group-hover:border-white/60 group-hover:brightness-110">
+                    {card.image_url ? <img src={card.image_url} alt={card.name} loading="lazy" className="aspect-[2.5/3.5] w-full object-contain" /> : <span className="block aspect-[2.5/3.5] bg-zinc-900" />}
+                  </span>
+                  <span className="mt-1 block truncate text-xs text-zinc-300 group-hover:text-white">{card.name}</span>
+                </button>
               </form>
             ))}
           </div>}
