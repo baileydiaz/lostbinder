@@ -8,6 +8,7 @@ import {
 
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import AddToBinder from '@/app/components/add-to-binder'
 
 
 import ReactionButtons, {
@@ -665,6 +666,7 @@ export default function ExploreCard({
               }}
             />
           </div>
+          <AddToBinder key={card.id} cardId={card.id} userId={userId} />
         </div>
       </article>
 
