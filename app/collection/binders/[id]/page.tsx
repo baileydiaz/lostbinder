@@ -2,14 +2,15 @@ import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { addBinderCard, removeBinderCard, updateBinder, deleteBinder } from '../../binder-actions'
+import SaveBinderButton from '../../save-binder-button'
 
-type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ error?: string }> }
+type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ error?: string; saved?: string }> }
 type Card = { id: string; name: string; image_url: string | null; rarity: string | null }
 type Entry = { card_id: string; position: number }
 
 export default async function BinderPage({ params, searchParams }: Props) {
   const { id } = await params
-  const { error } = await searchParams
+  const { error, saved } = await searchParams
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
@@ -45,7 +46,8 @@ export default async function BinderPage({ params, searchParams }: Props) {
             <p className="mt-2 text-xs text-zinc-500">{ordered.length}{binder.kind === 'dream' ? '/9' : ''} cards · {binder.is_public ? 'Public' : 'Private'}</p>
           </div>
         </div>
-        {error && <p className="mt-4 text-sm text-red-400">{error === 'full' ? 'Your Dream Binder is full. Remove a card to make room.' : 'Could not save your change. Please try again.'}</p>}
+        {saved === '1' && <p role="status" className="mt-4 rounded-lg border border-emerald-600/30 bg-emerald-950/30 p-3 text-sm text-emerald-300">✓ Binder settings saved. Your changes are live.</p>}
+        {error && <p role="alert" className="mt-4 text-sm text-red-400">{error === 'full' ? 'Your Dream Binder is full. Remove a card to make room.' : error === 'title' ? 'Please enter a binder name.' : 'Could not save your change. Please try again.'}</p>}
         <section className="mt-8 grid grid-cols-3 gap-2 rounded-2xl border border-white/10 bg-zinc-950 p-3 sm:gap-5 sm:p-6">
           {ordered.map((card) => (
             <article key={card.id} className="min-w-0">
@@ -85,7 +87,7 @@ export default async function BinderPage({ params, searchParams }: Props) {
             <label className="block text-sm">Name<input name="title" required maxLength={60} defaultValue={binder.title} className="mt-2 w-full rounded-lg border border-white/20 bg-black p-3" /></label>
             <label className="block text-sm">Description<textarea name="description" maxLength={500} defaultValue={binder.description} rows={3} className="mt-2 w-full rounded-lg border border-white/20 bg-black p-3" /></label>
             <label className="flex items-center gap-3 text-sm"><input type="checkbox" name="is_public" defaultChecked={binder.is_public} /> Public binder (visible to anyone with access)</label>
-            <button className="rounded-full bg-white px-5 py-2 text-sm font-semibold text-black">Save settings</button>
+            <SaveBinderButton />
           </form>
           <form action={deleteBinder} className="mt-8">
             <input type="hidden" name="binder_id" value={id} />
