@@ -10,6 +10,7 @@ import {
 
 import RemoveFromBinderButton
   from './remove-from-binder-button'
+import { createBinder } from './binder-actions'
 
 type FavoriteRow = {
   card_id: string
@@ -191,6 +192,11 @@ export default async function CollectionPage() {
         )
   }
 
+  const { data: curatedBinders } = await supabase.from('user_binders')
+    .select('id,title,description,kind,is_public')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+
   return (
     <main className="min-h-screen bg-black px-4 pb-16 pt-6 text-white sm:px-8 sm:pt-10">
       <div className="mx-auto max-w-7xl">
@@ -221,6 +227,30 @@ export default async function CollectionPage() {
           >
             Find cards
           </Link>
+        </section>
+
+        <section className="mb-12 rounded-2xl border border-white/10 bg-zinc-950 p-5 sm:p-7">
+          <h2 className="text-2xl font-semibold">Your curated binders</h2>
+          <p className="mt-2 text-sm text-zinc-400">Make themed collections or your dream nine-card page. Your favorites below stay unchanged.</p>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {(curatedBinders ?? []).map((binder) => (
+              <Link key={binder.id} href={'/collection/binders/' + binder.id} className="rounded-xl border border-white/15 bg-black p-5 transition hover:border-white/40">
+                <p className="text-xs uppercase tracking-widest text-zinc-500">{binder.kind === 'dream' ? 'Dream Binder' : 'Custom Binder'} · {binder.is_public ? 'Public' : 'Private'}</p>
+                <h3 className="mt-2 text-lg font-semibold">{binder.title}</h3>
+                <p className="mt-1 line-clamp-2 text-sm text-zinc-500">{binder.description}</p>
+              </Link>
+            ))}
+          </div>
+          <form action={createBinder} className="mt-6 grid gap-3 sm:grid-cols-2">
+            <input name="title" required maxLength={60} placeholder="Binder name" className="rounded-lg border border-white/20 bg-black p-3 text-sm" />
+            <select name="kind" className="rounded-lg border border-white/20 bg-black p-3 text-sm">
+              <option value="custom">Custom Binder</option>
+              <option value="dream">Dream Binder (nine cards)</option>
+            </select>
+            <textarea name="description" maxLength={500} rows={2} placeholder="Description (optional)" className="rounded-lg border border-white/20 bg-black p-3 text-sm sm:col-span-2" />
+            <button className="rounded-full bg-white px-5 py-3 text-sm font-semibold text-black sm:col-span-2 sm:justify-self-start">Create binder</button>
+          </form>
+          <p className="mt-3 text-xs text-zinc-600">One Dream Binder per account. New binders are private by default.</p>
         </section>
 
         {cards.length ===
