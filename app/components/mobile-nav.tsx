@@ -236,7 +236,7 @@ export default function MobileNav({
                 }
                 className="flex min-h-14 items-center border-b border-white/5 text-sm font-medium text-zinc-300 transition hover:text-white"
               >
-                Favorites
+                My Binder
               </Link>
 
               <Link
