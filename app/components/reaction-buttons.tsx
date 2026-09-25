@@ -28,6 +28,8 @@ type Props = {
     reaction: Reaction
   ) => void
 
+  onPersisted?: (reaction: Reaction) => void
+
   onError?: (
     message: string
   ) => void
@@ -39,6 +41,7 @@ export default function ReactionButtons({
   initialReaction = null,
   compact = false,
   onSaved,
+  onPersisted,
   onError,
 }: Props) {
   const [
@@ -263,6 +266,7 @@ export default function ReactionButtons({
           )
         }
       }
+      onPersisted?.(next)
     } catch (
       caughtError
     ) {

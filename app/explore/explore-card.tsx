@@ -7,6 +7,7 @@ import {
 } from 'react'
 
 import Link from 'next/link'
+import { createClient } from '@/lib/supabase/client'
 
 
 import ReactionButtons, {
@@ -29,6 +30,7 @@ type ExploreCardItem = {
 type Props = {
   cards: ExploreCardItem[]
   userId: string | null
+  reactionDates?: string[]
   initialReactions?: Record<
     string,
     Reaction
@@ -123,6 +125,7 @@ export default function ExploreCard({
   cards,
   userId,
   initialReactions = {},
+  reactionDates = [],
 }: Props) {
   const [
     allCards,
@@ -160,6 +163,46 @@ export default function ExploreCard({
     )
 
   const [exhausted, setExhausted] = useState(false)
+  const [today, setToday] = useState('')
+  const [dailyCount, setDailyCount] = useState(0)
+  const [lastDecision, setLastDecision] = useState<{ card: ExploreCardItem; previous: Reaction; next: Reaction; ready: boolean } | null>(null)
+  const [undoing, setUndoing] = useState(false)
+  useEffect(() => {
+    const day = new Date().toLocaleDateString('en-CA')
+    setToday(day)
+    setDailyCount(reactionDates.filter(date => new Date(date).toLocaleDateString('en-CA') === day).length)
+  }, [reactionDates])
+
+  async function undoLastDecision() {
+    if (!lastDecision?.ready || !userId || undoing) return
+    setUndoing(true)
+    const { card: previousCard, previous, next } = lastDecision
+    const supabase = createClient()
+    try {
+      const result = previous === null
+        ? await supabase.from('card_reactions').delete().eq('user_id', userId).eq('card_id', previousCard.id)
+        : await supabase.from('card_reactions').upsert({ user_id: userId, card_id: previousCard.id, reaction: previous, updated_at: new Date().toISOString() }, { onConflict: 'user_id,card_id' })
+      if (result.error) throw result.error
+      if (previous === 'love' || next === 'love') {
+        const favoriteResult = previous === 'love'
+          ? await supabase.from('card_favorites').upsert({ user_id: userId, card_id: previousCard.id }, { onConflict: 'user_id,card_id' })
+          : await supabase.from('card_favorites').delete().eq('user_id', userId).eq('card_id', previousCard.id)
+        if (favoriteResult.error) throw favoriteResult.error
+      }
+      setReactions(current => {
+        const updated = { ...current }
+        if (previous === null) delete updated[previousCard.id]
+        else updated[previousCard.id] = previous
+        return updated
+      })
+      if (previous === null && today) setDailyCount(count => Math.max(0, count - 1))
+      setAllCards(current => [previousCard, ...current.filter(item => item.id !== previousCard.id)])
+      setLastDecision(null)
+      setError(null)
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Could not undo that decision.')
+    } finally { setUndoing(false) }
+  }
 
   const [
     loadingMore,
@@ -456,6 +499,15 @@ export default function ExploreCard({
 
   return (
     <div className="mx-auto w-full max-w-[390px]">
+      <div className="mb-3 rounded-xl border border-white/10 bg-zinc-950 px-4 py-3">
+        <div className="flex items-center justify-between gap-3 text-xs text-zinc-400">
+          <span>Daily Discovery · {Math.min(dailyCount, 10)} of 10</span>
+          <Link href="/explore/history" className="text-zinc-200 underline-offset-4 hover:underline">History</Link>
+        </div>
+        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-zinc-800"><div className="h-full rounded-full bg-emerald-400 transition-all" style={{ width: `${Math.min(dailyCount, 10) * 10}%` }} /></div>
+        {dailyCount >= 10 ? <p className="mt-2 text-xs text-emerald-400">Today's ten discoveries complete. Keep exploring!</p> : null}
+        <button type="button" disabled={!lastDecision?.ready || undoing} onClick={() => void undoLastDecision()} className="mt-3 text-xs text-zinc-300 underline-offset-4 enabled:hover:underline disabled:opacity-30">↶ Undo last decision</button>
+      </div>
       {error ? (
         <div className="mb-2 rounded-lg border border-red-950 bg-red-950/30 px-3 py-2 text-center text-xs text-red-300">
           {error}
@@ -560,6 +612,9 @@ export default function ExploreCard({
               onSaved={(
                 nextReaction
               ) => {
+                if (nextReaction && userId) {
+                  setLastDecision({ card, previous: reactions[card.id] ?? null, next: nextReaction, ready: false })
+                }
                 if (
                   nextReaction
                 ) {
@@ -578,6 +633,10 @@ export default function ExploreCard({
                 setError(
                   null
                 )
+              }}
+              onPersisted={(saved) => {
+                setLastDecision(current => current?.card.id === card.id ? { ...current, ready: true } : current)
+                if (saved && today && !reactions[card.id]) setDailyCount(count => count + 1)
               }}
               onError={(
                 message
@@ -599,6 +658,7 @@ export default function ExploreCard({
                   }
                 )
 
+                setLastDecision(current => current?.card.id === card.id ? null : current)
                 setError(
                   message
                 )
