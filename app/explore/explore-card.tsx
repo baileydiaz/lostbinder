@@ -8,9 +8,6 @@ import {
 
 import Link from 'next/link'
 
-import {
-  createClient,
-} from '@/lib/supabase/client'
 
 import ReactionButtons, {
   type Reaction,
@@ -26,6 +23,7 @@ type ExploreCardItem = {
   set_id: string
   category: string | null
   set_name?: string | null
+  recommendation_reason?: string
 }
 
 type Props = {
@@ -160,6 +158,8 @@ export default function ExploreCard({
     >(
       new Set()
     )
+
+  const [exhausted, setExhausted] = useState(false)
 
   const [
     loadingMore,
@@ -346,7 +346,7 @@ export default function ExploreCard({
     if (
       visibleCards.length >
         LOAD_MORE_AT ||
-      loadingMore
+      loadingMore || exhausted
     ) {
       return
     }
@@ -355,6 +355,7 @@ export default function ExploreCard({
   }, [
     visibleCards.length,
     loadingMore,
+    exhausted,
   ])
 
   async function loadMoreCards() {
@@ -369,162 +370,17 @@ export default function ExploreCard({
     )
 
     try {
-      const supabase =
-        createClient()
-
-      const {
-        data,
-        error:
-          randomError,
-      } =
-        await supabase
-          .rpc(
-            'get_random_pokemon_cards',
-            {
-              limit_count:
-                RANDOM_BATCH_SIZE,
-            }
-          )
-
-      if (
-        randomError
-      ) {
-        throw new Error(
-          randomError.message
-        )
-      }
-
-      const randomCards =
-        (
-          data ??
-          []
-        ) as ExploreCardItem[]
-
-      if (
-        randomCards.length ===
-        0
-      ) {
-        return
-      }
-
-      const uniqueSetIds =
-        Array.from(
-          new Set(
-            randomCards
-              .map(
-                (item) =>
-                  item.set_id
-              )
-              .filter(
-                Boolean
-              )
-          )
-        )
-
-      let setNameMap:
-        Record<
-          string,
-          string
-        > = {}
-
-      if (
-        uniqueSetIds.length >
-        0
-      ) {
-        const {
-          data:
-            setData,
-          error:
-            setError,
-        } =
-          await supabase
-            .from(
-              'sets'
-            )
-            .select(
-              'id, name'
-            )
-            .in(
-              'id',
-              uniqueSetIds
-            )
-
-        if (
-          setError
-        ) {
-          console.error(
-            'Could not load set names:',
-            setError
-          )
-        } else {
-          setNameMap =
-            Object.fromEntries(
-              (
-                setData ??
-                []
-              ).map(
-                (
-                  set
-                ) => [
-                  set.id,
-                  set.name,
-                ]
-              )
-            )
-        }
-      }
-
-      const hydrated =
-        randomCards.map(
-          (
-            item
-          ) => ({
-            ...item,
-
-            set_name:
-              setNameMap[
-                item.set_id
-              ] ??
-              item.set_name ??
-              null,
-          })
-        )
-
-      const diversified =
-        diversifyCards(
-          hydrated
-        )
-
-      setAllCards(
-        (
-          current
-        ) => {
-          const seen =
-            new Set(
-              current.map(
-                (
-                  item
-                ) =>
-                  item.id
-              )
-            )
-
-          const newCards =
-            diversified.filter(
-              (
-                item
-              ) =>
-                !seen.has(
-                  item.id
-                )
-            )
-
-          return [
-            ...current,
-            ...newCards,
-          ]
-        }
-      )
+      const response = await fetch('/api/recommendations', { cache: 'no-store' })
+      if (!response.ok) throw new Error('Could not load recommendations')
+      const payload = (await response.json()) as { cards: ExploreCardItem[] }
+      const nextCards = payload.cards ?? []
+      const existingIds = new Set(allCards.map(item => item.id))
+      if (!nextCards.some(item => !existingIds.has(item.id))) setExhausted(true)
+      setAllCards(current => {
+        const seen = new Set(current.map(item => item.id))
+        const fresh = nextCards.filter(item => !seen.has(item.id))
+        return [...current, ...fresh]
+      })
     } catch (
       loadError
     ) {
@@ -585,7 +441,7 @@ export default function ExploreCard({
               <button
                 type="button"
                 onClick={() =>
-                  void loadMoreCards()
+                  (setExhausted(false), void loadMoreCards())
                 }
                 className="mt-5 rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-black transition hover:bg-zinc-200"
               >
@@ -666,6 +522,12 @@ export default function ExploreCard({
               </span>
             ) : null}
           </div>
+
+          {card.recommendation_reason ? (
+            <p className="mt-2 text-xs font-medium text-emerald-400">
+              ✦ {card.recommendation_reason}
+            </p>
+          ) : null}
 
           {card.illustrator ? (
             <p className="mt-0.5 text-xs text-zinc-600 sm:mt-1.5">

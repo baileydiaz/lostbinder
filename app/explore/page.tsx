@@ -1,3 +1,4 @@
+import { getRecommendations } from '@/app/lib/recommendations'
 import {
   createClient,
 } from '@/lib/supabase/server'
@@ -54,105 +55,11 @@ export default async function ExplorePage() {
       .auth
       .getUser()
 
-  /*
-   * Random, diverse initial
-   * discovery batch.
-   */
-  const {
-    data:
-      cardsData,
-    error:
-      cardsError,
-  } =
-    await supabase.rpc(
-      'get_random_pokemon_cards',
-      {
-        limit_count:
-          INITIAL_BATCH_SIZE,
-      }
-    )
-
-  if (
-    cardsError
-  ) {
-    console.error(
-      'Could not load cards:',
-      cardsError.message
-    )
-  }
-
-  const cards =
-    (cardsData ??
-      []) as CardRecord[]
-
-  const setIds =
-    Array.from(
-      new Set(
-        cards.map(
-          (card) =>
-            card.set_id
-        )
-      )
-    )
-
-  let sets:
-    SetRow[] = []
-
-  if (
-    setIds.length > 0
-  ) {
-    const {
-      data,
-      error,
-    } =
-      await supabase
-        .from('sets')
-        .select(`
-          id,
-          name
-        `)
-        .in(
-          'id',
-          setIds
-        )
-
-    if (
-      error
-    ) {
-      console.error(
-        'Could not load sets:',
-        error.message
-      )
-    }
-
-    sets =
-      (data ??
-        []) as SetRow[]
-  }
-
-  const setNameById =
-    new Map(
-      sets.map(
-        (set) => [
-          set.id,
-          set.name,
-        ]
-      )
-    )
-
-  const exploreCards:
-    ExploreCardType[] =
-    cards.map(
-      (card) => ({
-        ...card,
-
-        set_name:
-          setNameById.get(
-            card.set_id
-          ) ??
-          card.set_id,
-      })
-    )
+  const exploreCards = await getRecommendations(
+    supabase,
+    user?.id ?? null,
+    INITIAL_BATCH_SIZE,
+  )
 
   let initialReactions:
     Record<

@@ -1,3 +1,4 @@
+import { getRecommendations } from '@/app/lib/recommendations'
 import Link from 'next/link'
 
 import {
@@ -280,134 +281,15 @@ export default async function HomePage() {
           40
         )
 
-    const lovedSetIds =
-      lovedCards.map(
-        (card) =>
-          card.set_id
-      )
-
-    const likedSetIds =
-      reactions
-        .filter(
-          (reaction) =>
-            reaction.reaction ===
-            'like'
-        )
-        .map(
-          (reaction) =>
-            signalCardById.get(
-              reaction.card_id
-            )
-        )
-        .filter(
-          (
-            card
-          ): card is CardRecord =>
-            card !== undefined
-        )
-        .map(
-          (card) =>
-            card.set_id
-        )
-
-    const reactionLoveSetIds =
-      reactions
-        .filter(
-          (reaction) =>
-            reaction.reaction ===
-            'love'
-        )
-        .map(
-          (reaction) =>
-            signalCardById.get(
-              reaction.card_id
-            )
-        )
-        .filter(
-          (
-            card
-          ): card is CardRecord =>
-            card !== undefined
-        )
-        .map(
-          (card) =>
-            card.set_id
-        )
-
-    const preferredSetIds =
-      Array.from(
-        new Set([
-          ...lovedSetIds,
-          ...reactionLoveSetIds,
-          ...likedSetIds,
-        ])
-      ).slice(
-        0,
-        8
-      )
-
-    if (
-      preferredSetIds.length > 0
-    ) {
-      const {
-        data,
-        error,
-      } = await supabase
-        .from('cards')
-        .select(`
-          id,
-          name,
-          rarity,
-          image_url,
-          set_id,
-          category
-        `)
-        .eq(
-          'category',
-          'Pokemon'
-        )
-        .not(
-          'image_url',
-          'is',
-          null
-        )
-        .in(
-          'set_id',
-          preferredSetIds
-        )
-        .limit(150)
-
-      if (error) {
-        console.error(
-          'Could not load recommendations:',
-          error.message
-        )
-      }
-
-      const hiddenIds =
-        new Set([
-          ...reactedCardIds,
-          ...favoriteCardIds,
-          ...dismissedCardIds,
-        ])
-
-      recommendedCards =
-        (
-          (data ??
-            []) as CardRecord[]
-        )
-          .filter(
-            (card) =>
-              !hiddenIds.has(
-                card.id
-              )
-          )
-          .slice(
-            0,
-            40
-          )
-    }
   }
+
+  // Home and Explore share the same personalized scoring engine.
+  const homeRecommendations = await getRecommendations(
+    supabase,
+    user?.id ?? null,
+    40,
+  )
+  recommendedCards = homeRecommendations
 
   /*
    * -------------------------
@@ -867,34 +749,38 @@ export default async function HomePage() {
          * LostBinder quickly and get
          * users into the cards.
          */}
-        <section className="max-w-2xl">
-          <h1 className="max-w-xl text-3xl font-semibold leading-[1.08] tracking-tight sm:text-5xl">
-            Find cards you didn&apos;t
-            know you&apos;d love.
-          </h1>
-
-          <p className="mt-3 max-w-xl text-sm leading-6 text-zinc-500 sm:mt-4 sm:text-base">
-            Discover Pokémon cards based
-            on what you love — not what
-            they cost.
-          </p>
-
-          <div className="mt-5 flex items-center gap-3 sm:mt-6">
-            <Link
-              href="/explore"
-              className="rounded-full bg-white px-5 py-2.5 text-sm font-medium text-black transition hover:bg-zinc-200"
-            >
-              Start discovering
-            </Link>
-
-            {!user ? (
-              <Link
-                href="/auth/login"
-                className="px-2 py-2.5 text-sm text-zinc-500 transition hover:text-white"
-              >
-                Sign in
-              </Link>
-            ) : null}
+        <section className="overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-zinc-900 via-zinc-950 to-black px-5 py-7 sm:px-10 sm:py-10">
+          <div className="grid items-center gap-8 md:grid-cols-[1fr_0.85fr]">
+            <div className="max-w-xl">
+              <span className="inline-flex rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-400">
+                YOUR DAILY DISCOVERY
+              </span>
+              <h1 className="mt-5 text-4xl font-semibold leading-[1.08] tracking-tight sm:text-5xl">
+                Find your next favorite card.
+              </h1>
+              <p className="mt-4 max-w-lg text-sm leading-6 text-zinc-400 sm:text-base">
+                Explore Pokémon artwork picked around your tastes, with something unexpected in every session.
+              </p>
+              <div className="mt-7 flex flex-wrap items-center gap-3">
+                <Link href="/explore" className="rounded-full bg-white px-6 py-3 text-sm font-semibold text-black transition hover:bg-zinc-200">
+                  Start exploring →
+                </Link>
+                {!user ? <Link href="/auth/login" className="px-3 py-3 text-sm text-zinc-400 hover:text-white">Sign in to personalize</Link> : null}
+              </div>
+            </div>
+            <div className="flex min-h-[210px] items-center justify-center gap-3 sm:min-h-[280px]">
+              {homeRecommendations.slice(0, 3).map((card, index) => (
+                <Link
+                  key={card.id}
+                  href={`/cards/${card.id}`}
+                  aria-label={`View ${card.name}`}
+                  className={`block w-[30%] max-w-[155px] shrink-0 transition-transform hover:-translate-y-2 ${index === 1 ? '-translate-y-3' : 'translate-y-2'}`}
+                >
+                  <img src={card.image_url ?? ''} alt={card.name} className="w-full rounded-xl shadow-2xl shadow-black/70" />
+                </Link>
+              ))}
+              {homeRecommendations.length === 0 ? <p className="text-sm text-zinc-500">Your next discovery starts here.</p> : null}
+            </div>
           </div>
         </section>
 
