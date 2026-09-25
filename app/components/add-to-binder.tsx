@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 
@@ -16,6 +17,17 @@ export default function AddToBinder({ cardId, userId }: { cardId: string; userId
   const [message, setMessage] = useState('')
   const [newName, setNewName] = useState('')
   const [creating, setCreating] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => { setMounted(true) }, [])
+  useEffect(() => {
+    if (!open) return
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const onKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape' && !saving) setOpen(false) }
+    document.addEventListener('keydown', onKeyDown)
+    return () => { document.body.style.overflow = previousOverflow; document.removeEventListener('keydown', onKeyDown) }
+  }, [open, saving])
 
   useEffect(() => {
     if (!open || !userId) return
@@ -88,8 +100,14 @@ export default function AddToBinder({ cardId, userId }: { cardId: string; userId
       aria-expanded={open} className="w-full rounded-xl border border-white/25 px-4 py-3 text-sm font-semibold text-white hover:border-white/60">
       {open ? 'Close Binder selector' : '+ Add to Binder'}
     </button>
-    {open && <div className="mt-3 space-y-3 rounded-xl border border-white/15 bg-black p-4">
-      <h3 className="font-semibold">Add to Binder</h3>
+    {mounted && open && createPortal(<div className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6" role="presentation">
+      <button type="button" aria-label="Close Add to Binder" onClick={() => { if (!saving) setOpen(false) }} className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
+      <div role="dialog" aria-modal="true" aria-labelledby="add-to-binder-title" className="relative z-10 max-h-[min(85dvh,680px)] w-full max-w-md overflow-y-auto rounded-2xl border border-white/20 bg-zinc-950 p-5 text-white shadow-2xl sm:p-6">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h3 id="add-to-binder-title" className="text-lg font-semibold">Add to Binder</h3>
+        <button type="button" aria-label="Close" disabled={saving} onClick={() => setOpen(false)} className="rounded-full border border-white/20 px-3 py-1 text-xl text-zinc-300 hover:text-white">×</button>
+      </div>
+      <div className="space-y-3">
       <p className="text-xs text-zinc-400">Choose one or more collections. This does not change your Love reaction or advance Explore.</p>
       {loading ? <p className="text-sm text-zinc-400">Loading binders…</p> : binders.map(binder => <label key={binder.id} className="flex cursor-pointer items-center gap-3 rounded-lg border border-white/15 p-3">
         <input type="checkbox" checked={selected.includes(binder.id)}
@@ -106,6 +124,8 @@ export default function AddToBinder({ cardId, userId }: { cardId: string; userId
       {message && <p role="status" className="text-sm text-emerald-400">{message}</p>}
       <button type="button" disabled={loading || saving} onClick={() => void save()}
         className="w-full rounded-lg bg-white py-3 text-sm font-semibold text-black disabled:opacity-50">{saving ? 'Saving…' : 'Save Binder selections'}</button>
-    </div>}
+      </div>
+      </div>
+    </div>, document.body)}
   </div>
 }
