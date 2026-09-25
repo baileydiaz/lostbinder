@@ -11,16 +11,27 @@ async function currentUser() {
   return { supabase, user }
 }
 
-export async function createBinder(form: FormData) {
+export type CreateBinderState = { error: string }
+
+export async function createBinder(_previous: CreateBinderState, form: FormData): Promise<CreateBinderState> {
   const { supabase, user } = await currentUser()
   const title = String(form.get('title') ?? '').trim().slice(0, 60)
   const description = String(form.get('description') ?? '').trim().slice(0, 500)
   const kind = form.get('kind') === 'dream' ? 'dream' : 'custom'
-  if (!title) redirect('/collection?error=title')
+  if (!title) return { error: 'Please enter a binder name.' }
+  if (kind === 'dream') {
+    const { data: existing, error: lookupError } = await supabase.from('user_binders')
+      .select('id').eq('user_id', user.id).eq('kind', 'dream').maybeSingle()
+    if (lookupError) return { error: 'Could not check your Dream Binder. Please try again.' }
+    if (existing) return { error: 'You already have a Dream Binder. Open it above or create a Custom Binder instead.' }
+  }
   const { data, error } = await supabase.from('user_binders')
     .insert({ user_id: user.id, title, description, kind, is_public: false })
     .select('id').single()
-  if (error || !data) redirect('/collection?error=create')
+  if (error || !data) {
+    if (error?.code === '23505' && kind === 'dream') return { error: 'You already have a Dream Binder. Open it above or create a Custom Binder instead.' }
+    return { error: 'Could not create your binder. Please try again.' }
+  }
   revalidatePath('/collection')
   redirect('/collection/binders/' + data.id)
 }
