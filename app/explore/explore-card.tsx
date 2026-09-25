@@ -3,6 +3,7 @@
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react'
 
@@ -135,10 +136,40 @@ export default function ExploreCard({
     useState<
       ExploreCardItem[]
     >(
-      diversifyCards(
-        cards
-      )
+      cards
     )
+
+  // Preserve the discovery queue across visits to card details in this tab.
+  // A card only leaves the queue after a reaction, not after opening its page.
+  const queueReady = useRef(false)
+  useEffect(() => {
+    const key = 'lostbinder:explore-queue:' + (userId ?? 'guest')
+    try {
+      const stored = sessionStorage.getItem(key)
+      if (stored) {
+        const parsed = JSON.parse(stored) as ExploreCardItem[]
+        if (Array.isArray(parsed) && parsed.length) {
+          const seen = new Set(parsed.map(item => item.id))
+          setAllCards([...parsed, ...cards.filter(item => !seen.has(item.id))])
+        }
+      }
+    } catch {
+      // Fall back to the freshly recommended queue.
+    }
+    queueReady.current = true
+  }, [userId])
+
+  useEffect(() => {
+    if (!queueReady.current) return
+    try {
+      sessionStorage.setItem(
+        'lostbinder:explore-queue:' + (userId ?? 'guest'),
+        JSON.stringify(allCards.slice(0, 250)),
+      )
+    } catch {
+      // Storage can be unavailable; Explore remains usable.
+    }
+  }, [allCards, userId])
 
   const [
     reactions,
