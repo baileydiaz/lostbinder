@@ -207,18 +207,7 @@ export default async function CollectionPage() {
               My Binders
             </h1>
 
-            <p className="mt-2 text-sm text-zinc-500">
-              {
-                cards.length
-              }{' '}
-              {
-                cards.length ===
-                1
-                  ? 'card'
-                  : 'cards'
-              }{' '}
-              in Loved Cards.
-            </p>
+            <p className="mt-2 text-sm text-zinc-500">Your collections and loved cards, all in one place.</p>
           </div>
 
           <Link
@@ -230,8 +219,7 @@ export default async function CollectionPage() {
         </section>
 
         <section className="mb-12 rounded-2xl border border-white/10 bg-zinc-950 p-5 sm:p-7">
-          <h2 className="text-2xl font-semibold">My Collections</h2>
-          <p className="mt-2 text-sm text-zinc-400">Make themed collections or your dream nine-card page. Your favorites below stay unchanged.</p>
+          <p className="text-sm text-zinc-400">Create themed collections or your dream nine-card page.</p>
           <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {(curatedBinders ?? []).map((binder) => (
               <Link key={binder.id} href={'/collection/binders/' + binder.id} className="rounded-xl border border-white/15 bg-black p-5 transition hover:border-white/40">
@@ -245,7 +233,7 @@ export default async function CollectionPage() {
           <p className="mt-3 text-xs text-zinc-600">One Dream Binder per account. New binders are private by default.</p>
         </section>
 
-        <h2 className="mb-5 text-2xl font-semibold">Loved Cards</h2>
+        <h2 className="mb-5 text-2xl font-semibold">Loved Cards <span className="text-sm font-normal text-zinc-500">({cards.length})</span></h2>
         {cards.length ===
         0 ? (
           <section className="flex min-h-[45vh] items-center justify-center">
