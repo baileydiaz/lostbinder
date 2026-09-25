@@ -82,7 +82,7 @@ export default async function CollectionPage() {
       <main className="min-h-screen bg-black px-4 py-8 text-white sm:px-8">
         <div className="mx-auto max-w-7xl">
           <h1 className="text-3xl font-semibold tracking-tight">
-            Your Binder
+            My Binders
           </h1>
 
           <p className="mt-4 text-sm text-red-400">
@@ -143,7 +143,7 @@ export default async function CollectionPage() {
         <main className="min-h-screen bg-black px-4 py-8 text-white sm:px-8">
           <div className="mx-auto max-w-7xl">
             <h1 className="text-3xl font-semibold tracking-tight">
-              Your Binder
+              My Binders
             </h1>
 
             <p className="mt-4 text-sm text-red-400">
@@ -204,7 +204,7 @@ export default async function CollectionPage() {
         <section className="mb-7 flex items-end justify-between gap-4 sm:mb-10">
           <div>
             <h1 className="text-3xl font-semibold tracking-tight sm:text-5xl">
-              Your Binder
+              My Binders
             </h1>
 
             <p className="mt-2 text-sm text-zinc-500">
@@ -217,7 +217,7 @@ export default async function CollectionPage() {
                   ? 'card'
                   : 'cards'
               }{' '}
-              in your binder.
+              in Loved Cards.
             </p>
           </div>
 
@@ -230,7 +230,7 @@ export default async function CollectionPage() {
         </section>
 
         <section className="mb-12 rounded-2xl border border-white/10 bg-zinc-950 p-5 sm:p-7">
-          <h2 className="text-2xl font-semibold">Your curated binders</h2>
+          <h2 className="text-2xl font-semibold">My Collections</h2>
           <p className="mt-2 text-sm text-zinc-400">Make themed collections or your dream nine-card page. Your favorites below stay unchanged.</p>
           <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {(curatedBinders ?? []).map((binder) => (
@@ -245,12 +245,13 @@ export default async function CollectionPage() {
           <p className="mt-3 text-xs text-zinc-600">One Dream Binder per account. New binders are private by default.</p>
         </section>
 
+        <h2 className="mb-5 text-2xl font-semibold">Loved Cards</h2>
         {cards.length ===
         0 ? (
           <section className="flex min-h-[45vh] items-center justify-center">
             <div className="max-w-sm text-center">
               <h2 className="text-xl font-semibold sm:text-2xl">
-                Your binder is
+                Your Loved Cards are
                 empty.
               </h2>
 
