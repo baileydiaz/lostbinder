@@ -10,7 +10,7 @@ import {
 
 import RemoveFromBinderButton
   from './remove-from-binder-button'
-import { createBinder } from './binder-actions'
+import CreateBinderForm from './create-binder-form'
 
 type FavoriteRow = {
   card_id: string
@@ -241,15 +241,7 @@ export default async function CollectionPage() {
               </Link>
             ))}
           </div>
-          <form action={createBinder} className="mt-6 grid gap-3 sm:grid-cols-2">
-            <input name="title" required maxLength={60} placeholder="Binder name" className="rounded-lg border border-white/20 bg-black p-3 text-sm" />
-            <select name="kind" className="rounded-lg border border-white/20 bg-black p-3 text-sm">
-              <option value="custom">Custom Binder</option>
-              <option value="dream">Dream Binder (nine cards)</option>
-            </select>
-            <textarea name="description" maxLength={500} rows={2} placeholder="Description (optional)" className="rounded-lg border border-white/20 bg-black p-3 text-sm sm:col-span-2" />
-            <button className="rounded-full bg-white px-5 py-3 text-sm font-semibold text-black sm:col-span-2 sm:justify-self-start">Create binder</button>
-          </form>
+          <CreateBinderForm hasDreamBinder={(curatedBinders ?? []).some((binder) => binder.kind === 'dream')} />
           <p className="mt-3 text-xs text-zinc-600">One Dream Binder per account. New binders are private by default.</p>
         </section>
 
