@@ -293,38 +293,38 @@ export default async function HomePage() {
 
   // The logged-out hero is an artwork showcase, not a ranking of popular cards.
   // Select lesser-known Pokémon illustrated by distinctive artists from our own catalog.
-  const showcaseArtists = [
-    'Tomokazu Komiya',
-    'Yuka Morii',
-    'Asako Ito',
-    'Sachiko Adachi',
-    'HYOGONOSUKE',
-  ]
+  // Curate contrasting artwork: surreal Drowzee, painterly art, and a dragon.
+  // All cards are fetched from the catalog so links and images stay valid.
   const { data: showcaseData } = !user
     ? await supabase.from('cards')
-        .select('id,name,image_url,illustrator')
+        .select('id,name,image_url,illustrator,rarity')
         .eq('category', 'Pokemon')
         .not('image_url', 'is', null)
-        .in('illustrator', showcaseArtists)
-        .limit(250)
+        .in('illustrator', ['Tomokazu Komiya', 'HYOGONOSUKE', 'Shinji Kanda', 'Teeziro', 'AKIRA EGAWA'])
+        .limit(500)
     : { data: [] }
 
-  const featuredNames = ['Drowzee', 'Gloom', 'Slowpoke', 'Ditto', 'Claydol', 'Wooper', 'Shuckle']
-  const showcaseCards = (showcaseData ?? [])
-    .filter(card => !['Pikachu', 'Charizard', 'Umbreon', 'Rayquaza', 'Mewtwo'].some(name => card.name.includes(name)))
-    .sort((a, b) => {
-      const aRank = featuredNames.findIndex(name => a.name === name)
-      const bRank = featuredNames.findIndex(name => b.name === name)
-      return (aRank < 0 ? 999 : aRank) - (bRank < 0 ? 999 : bRank)
-    })
-  const showcaseArtistsUsed = new Set<string>()
-  const showcaseNamesUsed = new Set<string>()
-  const heroCards = user ? homeRecommendations.slice(0, 3) : showcaseCards.filter(card => {
-    if (!card.illustrator || showcaseArtistsUsed.has(card.illustrator) || showcaseNamesUsed.has(card.name)) return false
-    showcaseArtistsUsed.add(card.illustrator)
-    showcaseNamesUsed.add(card.name)
-    return true
-  }).slice(0, 3)
+  const { data: dragonData } = !user
+    ? await supabase.from('cards')
+        .select('id,name,image_url,illustrator,rarity')
+        .eq('category', 'Pokemon')
+        .not('image_url', 'is', null)
+        .in('name', ['Druddigon', 'Noivern', 'Haxorus', 'Dragalge', 'Turtonator'])
+        .limit(200)
+    : { data: [] }
+
+  const showcaseCards = showcaseData ?? []
+  const pick = (cards: typeof showcaseCards, names: string[], artists: string[] = []) =>
+    cards.find(card => names.includes(card.name) && artists.includes(card.illustrator ?? ''))
+    ?? cards.find(card => names.includes(card.name))
+  const first = pick(showcaseCards, ['Drowzee'], ['Tomokazu Komiya'])
+  const second = pick(showcaseCards, ['Gloom', 'Slowpoke', 'Claydol', 'Gengar'], ['HYOGONOSUKE', 'Shinji Kanda', 'Tomokazu Komiya'])
+    ?? showcaseCards.find(card => card.id !== first?.id && card.illustrator !== first?.illustrator)
+  const third = pick(dragonData ?? [], ['Druddigon', 'Noivern', 'Haxorus', 'Dragalge', 'Turtonator'], ['Teeziro', 'AKIRA EGAWA', 'Shinji Kanda'])
+    ?? (dragonData ?? []).find(card => card.id !== first?.id && card.id !== second?.id)
+  const heroCards = user ? homeRecommendations.slice(0, 3) : [first, second, third]
+    .filter((card): card is NonNullable<typeof card> => !!card)
+    .filter((card, index, cards) => cards.findIndex(other => other.id === card.id) === index)
 
   /*
    * -------------------------
