@@ -33,6 +33,7 @@ type ExploreCardType =
 type ReactionRow = {
   card_id: string
 
+  updated_at: string
   reaction:
     | 'pass'
     | 'like'
@@ -61,6 +62,7 @@ export default async function ExplorePage() {
     INITIAL_BATCH_SIZE,
   )
 
+  let reactionDates: string[] = []
   let initialReactions:
     Record<
       string,
@@ -86,7 +88,8 @@ export default async function ExplorePage() {
         )
         .select(`
           card_id,
-          reaction
+          reaction,
+          updated_at
         `)
         .eq(
           'user_id',
@@ -106,6 +109,7 @@ export default async function ExplorePage() {
       (reactionData ??
         []) as ReactionRow[]
 
+    reactionDates = reactions.map(item => item.updated_at)
     initialReactions =
       Object.fromEntries(
         reactions.map(
@@ -142,6 +146,7 @@ export default async function ExplorePage() {
           initialReactions={
             initialReactions
           }
+          reactionDates={reactionDates}
         />
       </div>
     </main>
