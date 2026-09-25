@@ -44,6 +44,7 @@ export default async function BinderPage({ params, searchParams }: Props) {
             <h1 className="mt-2 text-3xl font-semibold sm:text-5xl">{binder.title}</h1>
             <p className="mt-2 text-sm text-zinc-400">{binder.description || 'Your personal card collection.'}</p>
             <p className="mt-2 text-xs text-zinc-500">{ordered.length}{binder.kind === 'dream' ? '/9' : ''} cards · {binder.is_public ? 'Public' : 'Private'}</p>
+            {binder.is_public && <Link href={'/binders/' + id} className="mt-3 inline-block text-sm text-emerald-400 underline-offset-4 hover:underline">View public binder →</Link>}
           </div>
         </div>
         {saved === '1' && <p role="status" className="mt-4 rounded-lg border border-emerald-600/30 bg-emerald-950/30 p-3 text-sm text-emerald-300">✓ Binder settings saved. Your changes are live.</p>}
