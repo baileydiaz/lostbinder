@@ -753,19 +753,19 @@ export default async function HomePage() {
           <div className="grid items-center gap-8 md:grid-cols-[1fr_0.85fr]">
             <div className="max-w-xl">
               <span className="inline-flex rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-400">
-                YOUR DAILY DISCOVERY
+                {user ? "YOUR DAILY DISCOVERY" : "POKÉMON ART, REDISCOVERED"}
               </span>
               <h1 className="mt-5 text-4xl font-semibold leading-[1.08] tracking-tight sm:text-5xl">
-                Find your next favorite card.
+                {user ? "Find your next favorite card." : "Your favorite Pokémon card might be one you’ve never seen."}
               </h1>
               <p className="mt-4 max-w-lg text-sm leading-6 text-zinc-400 sm:text-base">
-                Explore Pokémon artwork picked around your tastes, with something unexpected in every session.
+                {user ? "Explore Pokémon artwork picked around your tastes, with something unexpected in every session." : "Go beyond the chase cards. Discover incredible artwork, uncover hidden gems, and start building a collection that feels like yours."}
               </p>
               <div className="mt-7 flex flex-wrap items-center gap-3">
                 <Link href="/explore" className="rounded-full bg-white px-6 py-3 text-sm font-semibold text-black transition hover:bg-zinc-200">
-                  Start exploring →
+                  {user ? "Start exploring →" : "Discover cards →"}
                 </Link>
-                {!user ? <Link href="/auth/login" className="px-3 py-3 text-sm text-zinc-400 hover:text-white">Sign in to personalize</Link> : null}
+                {!user ? <Link href="/auth/login" className="px-3 py-3 text-sm text-zinc-400 hover:text-white">Join LostBinder</Link> : null}
               </div>
             </div>
             <div className="flex min-h-[210px] items-center justify-center gap-3 sm:min-h-[280px]">
@@ -779,7 +779,7 @@ export default async function HomePage() {
                   <img src={card.image_url ?? ''} alt={card.name} className="w-full rounded-xl shadow-2xl shadow-black/70" />
                 </Link>
               ))}
-              {homeRecommendations.length === 0 ? <p className="text-sm text-zinc-500">Your next discovery starts here.</p> : null}
+              {homeRecommendations.length === 0 ? <p className="text-sm text-zinc-500">Thousands of cards. One you haven’t discovered yet.</p> : null}
             </div>
           </div>
         </section>
