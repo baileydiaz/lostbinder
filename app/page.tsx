@@ -309,7 +309,7 @@ export default async function HomePage() {
         .select('id,name,image_url,illustrator,rarity')
         .eq('category', 'Pokemon')
         .not('image_url', 'is', null)
-        .in('name', ['Druddigon', 'Noivern', 'Haxorus', 'Dragalge', 'Turtonator'])
+        .in('name', ['Dragonite V', 'Dragonite', 'Dragonite ex'])
         .limit(200)
     : { data: [] }
 
@@ -320,7 +320,9 @@ export default async function HomePage() {
   const first = pick(showcaseCards, ['Drowzee'], ['Tomokazu Komiya'])
   const second = pick(showcaseCards, ['Gloom', 'Slowpoke', 'Claydol', 'Gengar'], ['HYOGONOSUKE', 'Shinji Kanda', 'Tomokazu Komiya'])
     ?? showcaseCards.find(card => card.id !== first?.id && card.illustrator !== first?.illustrator)
-  const third = pick(dragonData ?? [], ['Druddigon', 'Noivern', 'Haxorus', 'Dragalge', 'Turtonator'], ['Teeziro', 'AKIRA EGAWA', 'Shinji Kanda'])
+  const third = (dragonData ?? []).find(card => card.name === 'Dragonite V' && card.id.toLowerCase().includes('swsh154'))
+    ?? (dragonData ?? []).find(card => card.name === 'Dragonite ex' && card.id.includes('159'))
+    ?? (dragonData ?? []).find(card => card.name === 'Dragonite')
     ?? (dragonData ?? []).find(card => card.id !== first?.id && card.id !== second?.id)
   const heroCards = user ? homeRecommendations.slice(0, 3) : [first, second, third]
     .filter((card): card is NonNullable<typeof card> => !!card)
