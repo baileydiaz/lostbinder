@@ -440,12 +440,8 @@ export default function ReactionButtons({
             )
           }
         >
-          <span className="text-center leading-tight">
-            Add to
-            <span className="block">
-              Collection
-            </span>
-          </span>
+          <span aria-hidden="true" className="mr-1 text-base leading-none">♥</span>
+          <span>Love</span>
         </button>
       </div>
 
