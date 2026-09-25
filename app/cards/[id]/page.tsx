@@ -6,6 +6,7 @@ import {
 } from '@/lib/supabase/server'
 
 import ReactionButtons from '@/app/components/reaction-buttons'
+import AddToBinder from '@/app/components/add-to-binder'
 import SendCardButton from '@/app/components/send-card-button'
 
 type Props = {
@@ -355,6 +356,8 @@ export default async function CardPage({
                 />
               ) : null}
             </div>
+
+            <div className="mt-4 max-w-sm"><AddToBinder cardId={card.id} userId={user?.id ?? null} /></div>
 
             <div className="mt-8">
               <p className="text-xs uppercase tracking-wider text-zinc-700">
