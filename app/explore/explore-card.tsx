@@ -624,8 +624,8 @@ export default function ExploreCard({
             </p>
           ) : null}
 
-          <div className="mt-1 grid grid-cols-4 items-start gap-1.5 sm:mt-3 sm:gap-2">
-            <div className="col-span-3 min-w-0 [&>div>div]:grid-cols-3 [&_button]:min-w-0 [&_button]:px-1 sm:[&_button]:px-3">
+          <div className="mt-1 grid grid-cols-4 items-stretch gap-1.5 sm:mt-3 sm:gap-2">
+            <div className="col-span-3 min-w-0 [&>div>div]:grid-cols-3 [&>div>div]:gap-1.5 [&_button]:min-h-[44px] [&_button]:min-w-0 [&_button]:px-1 sm:[&>div>div]:gap-2 sm:[&_button]:px-3">
             <ReactionButtons
               key={
                 card.id
@@ -698,8 +698,8 @@ export default function ExploreCard({
               }}
             />
             </div>
-            <div className="min-w-0 [&>div]:mt-0 [&_button]:min-h-[44px] [&_button]:h-full [&_button]:px-1 [&_button]:py-2 [&_button]:text-[11px] sm:[&_button]:text-sm">
-              <AddToBinder key={card.id} cardId={card.id} userId={userId} />
+            <div className="min-w-0">
+              <AddToBinder key={card.id} cardId={card.id} userId={userId} compact />
             </div>
           </div>
         </div>
