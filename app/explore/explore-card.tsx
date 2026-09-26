@@ -626,13 +626,15 @@ export default function ExploreCard({
       >
         <Link
           href={`/cards/${card.id}`}
-          className="relative block select-none"
+          className={`relative block select-none cursor-grab ${gesture.current ? "cursor-grabbing" : ""}`}
           style={{ touchAction: 'none', transform: `translate3d(${drag.x}px, ${drag.y}px, 0) rotate(${drag.x / 35}deg)`, transition: gesture.current ? 'none' : 'transform 180ms ease-out' }}
+          onDragStart={event => event.preventDefault()}
           onClickCapture={event => {
             if (suppressClick.current) { event.preventDefault(); suppressClick.current = false }
           }}
           onPointerDown={event => {
             if (swipeBusy || event.pointerType === 'mouse' && event.button !== 0) return
+            if (event.pointerType === 'mouse') event.preventDefault() // Prevent native link dragging; preserve click-to-open.
             gesture.current = { x: event.clientX, y: event.clientY, pointerId: event.pointerId }
             event.currentTarget.setPointerCapture(event.pointerId)
             clearHold()
