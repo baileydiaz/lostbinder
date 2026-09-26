@@ -199,6 +199,78 @@ export default function ExploreCard({
   const [dailyCount, setDailyCount] = useState(0)
   const [lastDecision, setLastDecision] = useState<{ card: ExploreCardItem; previous: Reaction; next: Reaction; ready: boolean } | null>(null)
   const [undoing, setUndoing] = useState(false)
+  type SwipeDirection = 'left' | 'right' | 'up' | 'down'
+  const [drag, setDrag] = useState({ x: 0, y: 0 })
+  const [hintVisible, setHintVisible] = useState(false)
+  const [swipeBusy, setSwipeBusy] = useState(false)
+  const [binderOpenRequest, setBinderOpenRequest] = useState(0)
+  const gesture = useRef<{ x: number; y: number; pointerId: number } | null>(null)
+  const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const suppressClick = useRef(false)
+  const swipeLock = useRef(false)
+  const clearHold = () => { if (holdTimer.current) clearTimeout(holdTimer.current); holdTimer.current = null }
+
+  useEffect(() => {
+    if (sessionStorage.getItem('lostbinder:swipe-learned')) return
+    const show = setTimeout(() => setHintVisible(true), 350)
+    const hide = setTimeout(() => setHintVisible(false), 3800)
+    return () => { clearTimeout(show); clearTimeout(hide) }
+  }, [])
+
+  function directionOf(x: number, y: number): SwipeDirection | null {
+    if (Math.max(Math.abs(x), Math.abs(y)) < 70) return null
+    return Math.abs(x) > Math.abs(y) * 1.2
+      ? (x > 0 ? 'right' : 'left')
+      : Math.abs(y) > Math.abs(x) * 1.2
+        ? (y > 0 ? 'down' : 'up')
+        : null
+  }
+
+  async function commitSwipe(direction: SwipeDirection, swipedCard: ExploreCardItem) {
+    if (swipeLock.current) return
+    if (direction === 'down') {
+      setBinderOpenRequest(current => current + 1)
+      setDrag({ x: 0, y: 0 })
+      return
+    }
+    if (!userId) {
+      setError('Log in to save your reactions. You can still browse cards.')
+      setDrag({ x: 0, y: 0 })
+      return
+    }
+    swipeLock.current = true
+    setSwipeBusy(true)
+    const next: Exclude<Reaction, null> = direction === 'left' ? 'pass' : direction === 'right' ? 'like' : 'love'
+    const previous = reactions[swipedCard.id] ?? null
+    try {
+      const supabase = createClient()
+      const { error: reactionError } = await supabase.from('card_reactions').upsert(
+        { user_id: userId, card_id: swipedCard.id, reaction: next, updated_at: new Date().toISOString() },
+        { onConflict: 'user_id,card_id' },
+      )
+      if (reactionError) throw reactionError
+      if (next === 'love') {
+        const { error: favoriteError } = await supabase.from('card_favorites').upsert(
+          { user_id: userId, card_id: swipedCard.id },
+          { onConflict: 'user_id,card_id' },
+        )
+        if (favoriteError) throw favoriteError
+      }
+      setLastDecision({ card: swipedCard, previous, next, ready: true })
+      setReactions(current => ({ ...current, [swipedCard.id]: next }))
+      if (!previous && today) setDailyCount(count => count + 1)
+      setError(null)
+      sessionStorage.setItem('lostbinder:swipe-learned', '1')
+      setHintVisible(false)
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Could not save swipe. Try again.')
+    } finally {
+      setDrag({ x: 0, y: 0 })
+      setSwipeBusy(false)
+      swipeLock.current = false
+    }
+  }
+
   useEffect(() => {
     const day = new Date().toLocaleDateString('en-CA')
     setToday(day)
@@ -554,23 +626,56 @@ export default function ExploreCard({
       >
         <Link
           href={`/cards/${card.id}`}
-          className="block"
+          className="relative block select-none"
+          style={{ touchAction: 'none', transform: `translate3d(${drag.x}px, ${drag.y}px, 0) rotate(${drag.x / 35}deg)`, transition: gesture.current ? 'none' : 'transform 180ms ease-out' }}
+          onClickCapture={event => {
+            if (suppressClick.current) { event.preventDefault(); suppressClick.current = false }
+          }}
+          onPointerDown={event => {
+            if (swipeBusy || event.pointerType === 'mouse' && event.button !== 0) return
+            gesture.current = { x: event.clientX, y: event.clientY, pointerId: event.pointerId }
+            event.currentTarget.setPointerCapture(event.pointerId)
+            clearHold()
+            holdTimer.current = setTimeout(() => setHintVisible(true), 420)
+          }}
+          onPointerMove={event => {
+            if (!gesture.current || gesture.current.pointerId !== event.pointerId) return
+            const x = event.clientX - gesture.current.x
+            const y = event.clientY - gesture.current.y
+            if (Math.hypot(x, y) > 10) clearHold()
+            setDrag({ x, y })
+          }}
+          onPointerUp={event => {
+            if (!gesture.current || gesture.current.pointerId !== event.pointerId) return
+            clearHold()
+            const x = event.clientX - gesture.current.x
+            const y = event.clientY - gesture.current.y
+            gesture.current = null
+            const direction = directionOf(x, y)
+            if (Math.hypot(x, y) > 12) {
+              suppressClick.current = true
+              setTimeout(() => { suppressClick.current = false }, 350)
+            }
+            if (direction) void commitSwipe(direction, card)
+            else setDrag({ x: 0, y: 0 })
+            setHintVisible(false)
+          }}
+          onPointerCancel={() => { clearHold(); gesture.current = null; setDrag({ x: 0, y: 0 }); setHintVisible(false) }}
         >
-          <div className="flex h-[calc(100dvh-300px)] min-h-[300px] max-h-[520px] items-center justify-center overflow-hidden bg-zinc-950 sm:aspect-[2.5/3.5] sm:h-auto sm:max-h-none">
+          <div className="relative flex h-[calc(100dvh-300px)] min-h-[300px] max-h-[520px] items-center justify-center overflow-hidden bg-zinc-950 sm:aspect-[2.5/3.5] sm:h-auto sm:max-h-none">
             <img
-              src={
-                card.image_url!
-              }
-              alt={
-                card.name
-              }
-              onError={() =>
-                hideBrokenCard(
-                  card.id
-                )
-              }
-              className="h-full w-full object-contain"
+              src={card.image_url!}
+              alt={card.name}
+              draggable={false}
+              onError={() => hideBrokenCard(card.id)}
+              className="pointer-events-none h-full w-full object-contain"
             />
+            <div aria-hidden="true" className={`pointer-events-none absolute inset-0 transition-opacity duration-200 ${hintVisible || Math.hypot(drag.x, drag.y) > 16 ? 'opacity-100' : 'opacity-0'}`}>
+              <span className={`absolute left-1/2 top-3 -translate-x-1/2 rounded-full bg-black/65 px-3 py-1.5 text-xs font-medium backdrop-blur-sm ${drag.y < -25 ? 'text-pink-300' : 'text-white/65'}`}>↑ Love</span>
+              <span className={`absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-black/65 px-2 py-1.5 text-xs font-medium backdrop-blur-sm ${drag.x < -25 ? 'text-white' : 'text-white/65'}`}>← Pass</span>
+              <span className={`absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-black/65 px-2 py-1.5 text-xs font-medium backdrop-blur-sm ${drag.x > 25 ? 'text-emerald-300' : 'text-white/65'}`}>Like →</span>
+              <span className={`absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-black/65 px-3 py-1.5 text-xs font-medium backdrop-blur-sm ${drag.y > 25 ? 'text-sky-300' : 'text-white/65'}`}>↓ Binder</span>
+            </div>
           </div>
         </Link>
 
@@ -699,7 +804,7 @@ export default function ExploreCard({
             />
             </div>
             <div className="min-w-0">
-              <AddToBinder key={card.id} cardId={card.id} userId={userId} compact />
+              <AddToBinder key={card.id} cardId={card.id} userId={userId} compact openRequest={binderOpenRequest} />
             </div>
           </div>
         </div>
