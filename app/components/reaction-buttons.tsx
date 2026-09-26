@@ -342,18 +342,20 @@ export default function ReactionButtons({
   }
 
   function buttonClasses(
-  selected: boolean
+  selected: boolean,
+  kind: 'pass' | 'like' | 'love'
   ) {
   const base =
     compact
       ? 'flex min-w-0 items-center justify-center rounded-xl border px-3 py-2 text-xs font-medium leading-tight transition'
       : 'flex min-w-0 items-center justify-center rounded-xl border px-3 py-3 text-sm font-medium leading-tight transition sm:px-5'
 
-  return `${base} ${
-    selected
-      ? 'border-white bg-white text-black'
-      : 'border-white/15 bg-transparent text-zinc-400 hover:border-white/35 hover:text-white'
-  } disabled:cursor-default disabled:opacity-60`
+  const palette = {
+    pass: selected ? 'border-zinc-400 bg-zinc-500 text-white' : 'border-zinc-500/50 bg-zinc-500/10 text-zinc-300 hover:bg-zinc-500/20',
+    like: selected ? 'border-emerald-400 bg-emerald-500 text-black' : 'border-emerald-500/45 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20',
+    love: selected ? 'border-rose-400 bg-rose-500 text-white' : 'border-rose-500/45 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20',
+  }
+  return `${base} ${palette[kind]} disabled:cursor-default disabled:opacity-60`
   }
 
   return (
@@ -376,10 +378,7 @@ export default function ReactionButtons({
             )
           }
           className={
-            buttonClasses(
-              reaction ===
-                'pass'
-            )
+            buttonClasses(reaction === 'pass', 'pass')
           }
         >
           <span
@@ -405,17 +404,14 @@ export default function ReactionButtons({
             )
           }
           className={
-            buttonClasses(
-              reaction ===
-                'like'
-            )
+            buttonClasses(reaction === 'like', 'like')
           }
         >
           <span
             aria-hidden="true"
             className="mr-1 text-base leading-none"
           >
-            ↑
+            👍
           </span>
 
           <span>
@@ -434,10 +430,7 @@ export default function ReactionButtons({
             )
           }
           className={
-            buttonClasses(
-              reaction ===
-                'love'
-            )
+            buttonClasses(reaction === 'love', 'love')
           }
         >
           <span aria-hidden="true" className="mr-1 text-base leading-none">♥</span>
