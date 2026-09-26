@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
-import { BookOpen } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 type Binder = { id: string; title: string; kind: 'dream' | 'custom'; count: number; hasCard: boolean }
@@ -101,7 +100,7 @@ export default function AddToBinder({ cardId, userId, compact = false, openReque
   return <div className={compact ? "h-full" : "mt-3"}>
     <button type="button" onClick={() => setOpen(current => !current)}
       aria-expanded={open} aria-label="Add to Binder" className={compact ? "flex h-full min-h-[44px] w-full min-w-0 items-center justify-center gap-1 rounded-xl border border-white/30 bg-black px-1 py-3 text-xs font-medium leading-tight text-white transition hover:border-white/60 hover:bg-zinc-950 sm:px-3 sm:text-sm" : "flex w-full items-center justify-center gap-2 rounded-xl border border-white/30 bg-black px-4 py-3 text-sm font-medium leading-tight text-white transition hover:border-white/60 hover:bg-zinc-950"}>
-      <BookOpen aria-hidden="true" className="h-4 w-4 shrink-0" /><span>{compact ? 'Binder' : 'Add to Binder'}</span>
+      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 shrink-0"><path d="M12 7.5c-2.5-2-5.5-2.5-9-2v13c3.5-.5 6.5 0 9 2 2.5-2 5.5-2.5 9-2v-13c-3.5-.5-6.5 0-9 2Z" /><path d="M12 7.5v13" /></svg><span>{compact ? 'Binder' : 'Add to Binder'}</span>
     </button>
     {mounted && open && createPortal(<div className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6" role="presentation">
       <button type="button" aria-label="Close Add to Binder" onClick={() => { if (!saving) setOpen(false) }} className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
