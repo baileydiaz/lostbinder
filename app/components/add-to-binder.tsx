@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 
 type Binder = { id: string; title: string; kind: 'dream' | 'custom'; count: number; hasCard: boolean }
 
-export default function AddToBinder({ cardId, userId, compact = false }: { cardId: string; userId: string | null; compact?: boolean }) {
+export default function AddToBinder({ cardId, userId, compact = false, openRequest = 0 }: { cardId: string; userId: string | null; compact?: boolean; openRequest?: number }) {
   const [open, setOpen] = useState(false)
   const [binders, setBinders] = useState<Binder[]>([])
   const [selected, setSelected] = useState<string[]>([])
@@ -20,6 +20,7 @@ export default function AddToBinder({ cardId, userId, compact = false }: { cardI
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => { setMounted(true) }, [])
+  useEffect(() => { if (openRequest > 0) setOpen(true) }, [openRequest])
   useEffect(() => {
     if (!open) return
     const previousOverflow = document.body.style.overflow
