@@ -622,7 +622,7 @@ export default function ExploreCard({
         key={
           card.id
         }
-        className="overflow-hidden rounded-2xl border border-white/10 bg-zinc-950 shadow-2xl"
+        className="relative overflow-hidden rounded-2xl border border-white/10 bg-zinc-950 shadow-2xl"
       >
         <Link
           href={`/cards/${card.id}`}
@@ -670,14 +670,25 @@ export default function ExploreCard({
               onError={() => hideBrokenCard(card.id)}
               className="pointer-events-none h-full w-full object-contain"
             />
-            <div aria-hidden="true" className={`pointer-events-none absolute inset-0 transition-opacity duration-200 ${hintVisible || Math.hypot(drag.x, drag.y) > 16 ? 'opacity-100' : 'opacity-0'}`}>
-              <span className={`absolute left-1/2 top-3 -translate-x-1/2 rounded-full border px-3 py-1.5 text-xs font-medium backdrop-blur-sm ${drag.y < -25 ? 'border-rose-400 bg-rose-500/85 text-white' : 'border-rose-400/45 bg-rose-950/65 text-rose-200/80'}`}>↑ ♥ Love</span>
-              <span className={`absolute left-2 top-1/2 -translate-y-1/2 rounded-full border px-2 py-1.5 text-xs font-medium backdrop-blur-sm ${drag.x < -25 ? 'border-zinc-300 bg-zinc-600 text-white' : 'border-zinc-400/45 bg-zinc-900/75 text-zinc-200/80'}`}>← × Pass</span>
-              <span className={`absolute right-2 top-1/2 -translate-y-1/2 rounded-full border px-2 py-1.5 text-xs font-medium backdrop-blur-sm ${drag.x > 25 ? 'border-emerald-400 bg-emerald-500/85 text-black' : 'border-emerald-400/45 bg-emerald-950/70 text-emerald-200/80'}`}>✓ Like →</span>
-              <span className={`absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full border px-3 py-1.5 text-xs font-medium backdrop-blur-sm ${drag.y > 25 ? 'border-white bg-black text-white' : 'border-white/35 bg-black/80 text-white/80'}`}>↓ ▤ Binder</span>
-            </div>
+
           </div>
         </Link>
+
+        {/* Drop targets stay in place while the artwork follows the finger. */}
+        <div aria-hidden="true" className={`pointer-events-none absolute inset-x-0 top-0 z-10 h-[calc(100dvh-300px)] min-h-[300px] max-h-[520px] sm:aspect-[2.5/3.5] sm:h-auto sm:max-h-none transition-opacity duration-150 ${hintVisible || Math.hypot(drag.x, drag.y) > 10 ? 'opacity-100' : 'opacity-0'}`}>
+          <div className={`absolute left-1/2 top-4 flex -translate-x-1/2 flex-col items-center gap-1 rounded-2xl border px-4 py-2 shadow-xl backdrop-blur-md transition-all duration-150 ${drag.y < -35 && Math.abs(drag.y) > Math.abs(drag.x) ? 'scale-125 border-rose-300 bg-rose-500 text-white shadow-rose-500/40' : 'border-rose-400/60 bg-rose-950/85 text-rose-200'}`}>
+            <span className="text-3xl leading-none">♥</span><span className="text-[11px] font-semibold">LOVE ↑</span>
+          </div>
+          <div className={`absolute left-2 top-1/2 flex -translate-y-1/2 flex-col items-center gap-1 rounded-2xl border px-3 py-2 shadow-xl backdrop-blur-md transition-all duration-150 ${drag.x < -35 && Math.abs(drag.x) > Math.abs(drag.y) ? 'scale-125 border-white bg-zinc-500 text-white' : 'border-zinc-400/60 bg-zinc-950/85 text-zinc-200'}`}>
+            <span className="text-3xl leading-none">×</span><span className="text-[11px] font-semibold">← PASS</span>
+          </div>
+          <div className={`absolute right-2 top-1/2 flex -translate-y-1/2 flex-col items-center gap-1 rounded-2xl border px-3 py-2 shadow-xl backdrop-blur-md transition-all duration-150 ${drag.x > 35 && Math.abs(drag.x) > Math.abs(drag.y) ? 'scale-125 border-emerald-300 bg-emerald-500 text-black shadow-emerald-500/40' : 'border-emerald-400/60 bg-emerald-950/85 text-emerald-200'}`}>
+            <span className="text-3xl leading-none">✓</span><span className="text-[11px] font-semibold">LIKE →</span>
+          </div>
+          <div className={`absolute bottom-4 left-1/2 flex -translate-x-1/2 flex-col items-center gap-1 rounded-2xl border px-4 py-2 shadow-xl backdrop-blur-md transition-all duration-150 ${drag.y > 35 && Math.abs(drag.y) > Math.abs(drag.x) ? 'scale-125 border-white bg-black text-white shadow-white/20' : 'border-white/45 bg-black/90 text-white/85'}`}>
+            <span className="text-3xl leading-none">▤</span><span className="text-[11px] font-semibold">↓ BINDER</span>
+          </div>
+        </div>
 
         <div className="p-2 sm:p-4">
           <div className="flex items-start justify-between gap-3">
