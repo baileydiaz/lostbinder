@@ -99,7 +99,7 @@ export default function AddToBinder({ cardId, userId, compact = false, openReque
   if (!userId) return <Link href="/auth/login" className="mt-2 block rounded-xl border border-white/20 py-2 text-center text-sm text-zinc-300">Log in to add to Binder</Link>
   return <div className={compact ? "h-full" : "mt-3"}>
     <button type="button" onClick={() => setOpen(current => !current)}
-      aria-expanded={open} aria-label="Add to Binder" className={compact ? "flex h-full min-h-[44px] w-full min-w-0 items-center justify-center gap-1 rounded-xl border border-white/15 bg-transparent px-1 py-3 text-xs font-medium leading-tight text-zinc-400 transition hover:border-white/35 hover:text-white sm:px-3 sm:text-sm" : "flex w-full items-center justify-center gap-2 rounded-xl border border-white/15 bg-transparent px-4 py-3 text-sm font-medium leading-tight text-zinc-400 transition hover:border-white/35 hover:text-white"}>
+      aria-expanded={open} aria-label="Add to Binder" className={compact ? "flex h-full min-h-[44px] w-full min-w-0 items-center justify-center gap-1 rounded-xl border border-white/30 bg-black px-1 py-3 text-xs font-medium leading-tight text-white transition hover:border-white/60 hover:bg-zinc-950 sm:px-3 sm:text-sm" : "flex w-full items-center justify-center gap-2 rounded-xl border border-white/30 bg-black px-4 py-3 text-sm font-medium leading-tight text-white transition hover:border-white/60 hover:bg-zinc-950"}>
       <span aria-hidden="true" className="text-base leading-none">▤</span><span>{compact ? 'Binder' : 'Add to Binder'}</span>
     </button>
     {mounted && open && createPortal(<div className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6" role="presentation">
