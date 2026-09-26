@@ -415,7 +415,7 @@ export default function ReactionButtons({
             aria-hidden="true"
             className="mr-1 text-base leading-none"
           >
-            +
+            ↑
           </span>
 
           <span>
