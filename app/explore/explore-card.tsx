@@ -671,10 +671,10 @@ export default function ExploreCard({
               className="pointer-events-none h-full w-full object-contain"
             />
             <div aria-hidden="true" className={`pointer-events-none absolute inset-0 transition-opacity duration-200 ${hintVisible || Math.hypot(drag.x, drag.y) > 16 ? 'opacity-100' : 'opacity-0'}`}>
-              <span className={`absolute left-1/2 top-3 -translate-x-1/2 rounded-full bg-black/65 px-3 py-1.5 text-xs font-medium backdrop-blur-sm ${drag.y < -25 ? 'text-pink-300' : 'text-white/65'}`}>↑ Love</span>
-              <span className={`absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-black/65 px-2 py-1.5 text-xs font-medium backdrop-blur-sm ${drag.x < -25 ? 'text-white' : 'text-white/65'}`}>← Pass</span>
-              <span className={`absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-black/65 px-2 py-1.5 text-xs font-medium backdrop-blur-sm ${drag.x > 25 ? 'text-emerald-300' : 'text-white/65'}`}>Like →</span>
-              <span className={`absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-black/65 px-3 py-1.5 text-xs font-medium backdrop-blur-sm ${drag.y > 25 ? 'text-sky-300' : 'text-white/65'}`}>↓ Binder</span>
+              <span className={`absolute left-1/2 top-3 -translate-x-1/2 rounded-full border px-3 py-1.5 text-xs font-medium backdrop-blur-sm ${drag.y < -25 ? 'border-rose-400 bg-rose-500/85 text-white' : 'border-rose-400/45 bg-rose-950/65 text-rose-200/80'}`}>↑ ♥ Love</span>
+              <span className={`absolute left-2 top-1/2 -translate-y-1/2 rounded-full border px-2 py-1.5 text-xs font-medium backdrop-blur-sm ${drag.x < -25 ? 'border-zinc-300 bg-zinc-600 text-white' : 'border-zinc-400/45 bg-zinc-900/75 text-zinc-200/80'}`}>← × Pass</span>
+              <span className={`absolute right-2 top-1/2 -translate-y-1/2 rounded-full border px-2 py-1.5 text-xs font-medium backdrop-blur-sm ${drag.x > 25 ? 'border-emerald-400 bg-emerald-500/85 text-black' : 'border-emerald-400/45 bg-emerald-950/70 text-emerald-200/80'}`}>✓ Like →</span>
+              <span className={`absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full border px-3 py-1.5 text-xs font-medium backdrop-blur-sm ${drag.y > 25 ? 'border-white bg-black text-white' : 'border-white/35 bg-black/80 text-white/80'}`}>↓ ▤ Binder</span>
             </div>
           </div>
         </Link>
