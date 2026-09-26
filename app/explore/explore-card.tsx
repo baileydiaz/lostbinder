@@ -203,7 +203,7 @@ export default function ExploreCard({
   const [drag, setDrag] = useState({ x: 0, y: 0 })
   const [hintVisible, setHintVisible] = useState(false)
   const [swipeBusy, setSwipeBusy] = useState(false)
-  const [binderOpenRequest, setBinderOpenRequest] = useState(0)
+  const [binderOpenRequest, setBinderOpenRequest] = useState({ cardId: '', count: 0 })
   const gesture = useRef<{ x: number; y: number; pointerId: number } | null>(null)
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const suppressClick = useRef(false)
@@ -229,7 +229,7 @@ export default function ExploreCard({
   async function commitSwipe(direction: SwipeDirection, swipedCard: ExploreCardItem) {
     if (swipeLock.current) return
     if (direction === 'down') {
-      setBinderOpenRequest(current => current + 1)
+      setBinderOpenRequest(current => ({ cardId: swipedCard.id, count: current.count + 1 }))
       setDrag({ x: 0, y: 0 })
       return
     }
@@ -804,7 +804,7 @@ export default function ExploreCard({
             />
             </div>
             <div className="min-w-0">
-              <AddToBinder key={card.id} cardId={card.id} userId={userId} compact openRequest={binderOpenRequest} />
+              <AddToBinder key={card.id} cardId={card.id} userId={userId} compact openRequest={binderOpenRequest.cardId === card.id ? binderOpenRequest.count : 0} />
             </div>
           </div>
         </div>
