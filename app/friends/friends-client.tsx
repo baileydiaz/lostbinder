@@ -939,7 +939,7 @@ export default function FriendsClient({
                         </p>
 
                         <p className="mt-6 text-sm text-zinc-300">
-                          View binder →
+                          See friend's binders →
                         </p>
                       </Link>
 

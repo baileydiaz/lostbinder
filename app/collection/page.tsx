@@ -10,6 +10,7 @@ import {
 
 import RemoveFromBinderButton
   from './remove-from-binder-button'
+import CreateBinderPanel from './create-binder-panel'
 
 type FavoriteRow = {
   card_id: string
@@ -81,7 +82,7 @@ export default async function CollectionPage() {
       <main className="min-h-screen bg-black px-4 py-8 text-white sm:px-8">
         <div className="mx-auto max-w-7xl">
           <h1 className="text-3xl font-semibold tracking-tight">
-            Your Binder
+            My Binders
           </h1>
 
           <p className="mt-4 text-sm text-red-400">
@@ -142,7 +143,7 @@ export default async function CollectionPage() {
         <main className="min-h-screen bg-black px-4 py-8 text-white sm:px-8">
           <div className="mx-auto max-w-7xl">
             <h1 className="text-3xl font-semibold tracking-tight">
-              Your Binder
+              My Binders
             </h1>
 
             <p className="mt-4 text-sm text-red-400">
@@ -191,6 +192,11 @@ export default async function CollectionPage() {
         )
   }
 
+  const { data: curatedBinders } = await supabase.from('user_binders')
+    .select('id,title,description,kind,is_public')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+
   return (
     <main className="min-h-screen bg-black px-4 pb-16 pt-6 text-white sm:px-8 sm:pt-10">
       <div className="mx-auto max-w-7xl">
@@ -198,21 +204,10 @@ export default async function CollectionPage() {
         <section className="mb-7 flex items-end justify-between gap-4 sm:mb-10">
           <div>
             <h1 className="text-3xl font-semibold tracking-tight sm:text-5xl">
-              Your Binder
+              My Binders
             </h1>
 
-            <p className="mt-2 text-sm text-zinc-500">
-              {
-                cards.length
-              }{' '}
-              {
-                cards.length ===
-                1
-                  ? 'card'
-                  : 'cards'
-              }{' '}
-              in your binder.
-            </p>
+            <p className="mt-2 text-sm text-zinc-500">Your collections and loved cards, all in one place.</p>
           </div>
 
           <Link
@@ -223,12 +218,27 @@ export default async function CollectionPage() {
           </Link>
         </section>
 
+        <section className="mb-12 rounded-2xl border border-white/10 bg-zinc-950 p-5 sm:p-7">
+          <p className="text-sm text-zinc-400">Your custom collections and Dream Binder.</p>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {(curatedBinders ?? []).map((binder) => (
+              <Link key={binder.id} href={'/collection/binders/' + binder.id} className="rounded-xl border border-white/15 bg-black p-5 transition hover:border-white/40">
+                <p className="text-xs uppercase tracking-widest text-zinc-500">{binder.kind === 'dream' ? 'Dream Binder' : 'Custom Binder'} · {binder.is_public ? 'Public' : 'Private'}</p>
+                <h3 className="mt-2 text-lg font-semibold">{binder.title}</h3>
+                <p className="mt-1 line-clamp-2 text-sm text-zinc-500">{binder.description}</p>
+              </Link>
+            ))}
+          </div>
+          <CreateBinderPanel hasDreamBinder={(curatedBinders ?? []).some((binder) => binder.kind === 'dream')} />
+        </section>
+
+        <h2 className="mb-5 text-2xl font-semibold">Loved Cards <span className="text-sm font-normal text-zinc-500">({cards.length})</span></h2>
         {cards.length ===
         0 ? (
           <section className="flex min-h-[45vh] items-center justify-center">
             <div className="max-w-sm text-center">
               <h2 className="text-xl font-semibold sm:text-2xl">
-                Your binder is
+                Your Loved Cards are
                 empty.
               </h2>
 

@@ -341,19 +341,13 @@ export default function ReactionButtons({
     )
   }
 
-  function buttonClasses(
-  selected: boolean
-  ) {
+  function buttonClasses(selected: boolean) {
   const base =
     compact
       ? 'flex min-w-0 items-center justify-center rounded-xl border px-3 py-2 text-xs font-medium leading-tight transition'
       : 'flex min-w-0 items-center justify-center rounded-xl border px-3 py-3 text-sm font-medium leading-tight transition sm:px-5'
 
-  return `${base} ${
-    selected
-      ? 'border-white bg-white text-black'
-      : 'border-white/15 bg-transparent text-zinc-400 hover:border-white/35 hover:text-white'
-  } disabled:cursor-default disabled:opacity-60`
+  return `${base} ${selected ? 'border-white bg-white text-black' : 'border-white/15 bg-transparent text-zinc-400 hover:border-white/35 hover:text-white'} disabled:cursor-default disabled:opacity-60`
   }
 
   return (
@@ -376,10 +370,7 @@ export default function ReactionButtons({
             )
           }
           className={
-            buttonClasses(
-              reaction ===
-                'pass'
-            )
+            buttonClasses(reaction === 'pass')
           }
         >
           <span
@@ -405,17 +396,14 @@ export default function ReactionButtons({
             )
           }
           className={
-            buttonClasses(
-              reaction ===
-                'like'
-            )
+            buttonClasses(reaction === 'like')
           }
         >
           <span
             aria-hidden="true"
             className="mr-1 text-base leading-none"
           >
-            +
+            ✓
           </span>
 
           <span>
@@ -434,18 +422,11 @@ export default function ReactionButtons({
             )
           }
           className={
-            buttonClasses(
-              reaction ===
-                'love'
-            )
+            buttonClasses(reaction === 'love')
           }
         >
-          <span className="text-center leading-tight">
-            Add to
-            <span className="block">
-              Collection
-            </span>
-          </span>
+          <span aria-hidden="true" className="mr-1 text-base leading-none">♥</span>
+          <span>Love</span>
         </button>
       </div>
 

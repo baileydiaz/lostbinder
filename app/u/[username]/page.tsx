@@ -202,6 +202,11 @@ export default async function PublicProfilePage({
         )
   }
 
+  const { data: publicBinders } = await supabase.from('user_binders')
+    .select('id,title,description,kind')
+    .eq('user_id', profile.id).eq('is_public', true)
+    .order('created_at', { ascending: false })
+
   const displayUsername =
     profile.username ??
     'collector'
@@ -264,6 +269,19 @@ export default async function PublicProfilePage({
             </div>
           </div>
         </header>
+
+        <section className="pt-8 sm:pt-10">
+          <h2 className="text-xl font-semibold sm:text-2xl">Public collections</h2>
+          <p className="mt-1 text-sm text-zinc-500">Curated binders shared by @{displayUsername}.</p>
+          {(publicBinders ?? []).length ? <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {(publicBinders ?? []).map((binder) => <Link key={binder.id} href={'/binders/' + binder.id} className="rounded-xl border border-white/15 bg-zinc-950 p-5 transition hover:border-white/40">
+              <p className="text-xs uppercase tracking-widest text-zinc-500">{binder.kind === 'dream' ? 'Dream Binder' : 'Custom Binder'}</p>
+              <h3 className="mt-2 text-lg font-semibold">{binder.title}</h3>
+              <p className="mt-2 line-clamp-2 text-sm text-zinc-500">{binder.description}</p>
+              <p className="mt-4 text-xs text-zinc-400">View collection →</p>
+            </Link>)}
+          </div> : <p className="mt-4 text-sm text-zinc-600">No public collections yet.</p>}
+        </section>
 
         <section className="pt-8 sm:pt-10">
           <div className="mb-6">

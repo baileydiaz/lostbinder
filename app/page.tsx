@@ -291,6 +291,43 @@ export default async function HomePage() {
   )
   recommendedCards = homeRecommendations
 
+  // The logged-out hero is an artwork showcase, not a ranking of popular cards.
+  // Select lesser-known Pokémon illustrated by distinctive artists from our own catalog.
+  // Curate contrasting artwork: surreal Drowzee, painterly art, and a dragon.
+  // All cards are fetched from the catalog so links and images stay valid.
+  const { data: showcaseData } = !user
+    ? await supabase.from('cards')
+        .select('id,name,image_url,illustrator,rarity')
+        .eq('category', 'Pokemon')
+        .not('image_url', 'is', null)
+        .in('illustrator', ['Tomokazu Komiya', 'HYOGONOSUKE', 'Shinji Kanda', 'Teeziro', 'AKIRA EGAWA'])
+        .limit(500)
+    : { data: [] }
+
+  const { data: dragonData } = !user
+    ? await supabase.from('cards')
+        .select('id,name,image_url,illustrator,rarity')
+        .eq('category', 'Pokemon')
+        .not('image_url', 'is', null)
+        .in('name', ['Dragonite V', 'Dragonite', 'Dragonite ex'])
+        .limit(200)
+    : { data: [] }
+
+  const showcaseCards = showcaseData ?? []
+  const pick = (cards: typeof showcaseCards, names: string[], artists: string[] = []) =>
+    cards.find(card => names.includes(card.name) && artists.includes(card.illustrator ?? ''))
+    ?? cards.find(card => names.includes(card.name))
+  const first = pick(showcaseCards, ['Drowzee'], ['Tomokazu Komiya'])
+  const second = pick(showcaseCards, ['Gloom', 'Slowpoke', 'Claydol', 'Gengar'], ['HYOGONOSUKE', 'Shinji Kanda', 'Tomokazu Komiya'])
+    ?? showcaseCards.find(card => card.id !== first?.id && card.illustrator !== first?.illustrator)
+  const third = (dragonData ?? []).find(card => card.name === 'Dragonite V' && card.id.toLowerCase().includes('swsh154'))
+    ?? (dragonData ?? []).find(card => card.name === 'Dragonite ex' && card.id.includes('159'))
+    ?? (dragonData ?? []).find(card => card.name === 'Dragonite')
+    ?? (dragonData ?? []).find(card => card.id !== first?.id && card.id !== second?.id)
+  const heroCards = user ? homeRecommendations.slice(0, 3) : [first, second, third]
+    .filter((card): card is NonNullable<typeof card> => !!card)
+    .filter((card, index, cards) => cards.findIndex(other => other.id === card.id) === index)
+
   /*
    * -------------------------
    * FRIENDS ACTIVITY
@@ -753,23 +790,23 @@ export default async function HomePage() {
           <div className="grid items-center gap-8 md:grid-cols-[1fr_0.85fr]">
             <div className="max-w-xl">
               <span className="inline-flex rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-400">
-                YOUR DAILY DISCOVERY
+                {user ? "YOUR DAILY DISCOVERY" : "POKÉMON ART, REDISCOVERED"}
               </span>
               <h1 className="mt-5 text-4xl font-semibold leading-[1.08] tracking-tight sm:text-5xl">
-                Find your next favorite card.
+                {user ? "Find your next favorite card." : "Forget the price tag. Fall in love with the art."}
               </h1>
               <p className="mt-4 max-w-lg text-sm leading-6 text-zinc-400 sm:text-base">
-                Explore Pokémon artwork picked around your tastes, with something unexpected in every session.
+                {user ? "Explore Pokémon artwork picked around your tastes, with something unexpected in every session." : "Take money out of the equation. Discover overlooked Pokémon artwork, appreciate each card on its own, and build a personal collection around what you love—not what it costs."}
               </p>
               <div className="mt-7 flex flex-wrap items-center gap-3">
                 <Link href="/explore" className="rounded-full bg-white px-6 py-3 text-sm font-semibold text-black transition hover:bg-zinc-200">
-                  Start exploring →
+                  {user ? "Start exploring →" : "Discover cards →"}
                 </Link>
-                {!user ? <Link href="/auth/login" className="px-3 py-3 text-sm text-zinc-400 hover:text-white">Sign in to personalize</Link> : null}
+                {!user ? <Link href="/auth/login" className="px-3 py-3 text-sm text-zinc-400 hover:text-white">Join LostBinder</Link> : null}
               </div>
             </div>
             <div className="flex min-h-[210px] items-center justify-center gap-3 sm:min-h-[280px]">
-              {homeRecommendations.slice(0, 3).map((card, index) => (
+              {heroCards.map((card, index) => (
                 <Link
                   key={card.id}
                   href={`/cards/${card.id}`}
@@ -779,7 +816,7 @@ export default async function HomePage() {
                   <img src={card.image_url ?? ''} alt={card.name} className="w-full rounded-xl shadow-2xl shadow-black/70" />
                 </Link>
               ))}
-              {homeRecommendations.length === 0 ? <p className="text-sm text-zinc-500">Your next discovery starts here.</p> : null}
+              {heroCards.length === 0 ? <p className="text-sm text-zinc-500">Thousands of cards. One you haven’t discovered yet.</p> : null}
             </div>
           </div>
         </section>

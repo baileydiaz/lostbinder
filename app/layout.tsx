@@ -202,7 +202,7 @@ export default async function RootLayout({
                   href="/collection"
                   className="text-sm font-medium text-zinc-300 transition hover:text-white"
                 >
-                  My Binder
+                  My Binders
                 </Link>
               ) : null}
             </div>
