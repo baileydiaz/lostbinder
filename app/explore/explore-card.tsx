@@ -8,7 +8,6 @@ import {
 } from 'react'
 
 import Link from 'next/link'
-import { BookOpen } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import AddToBinder from '@/app/components/add-to-binder'
 
@@ -687,7 +686,7 @@ export default function ExploreCard({
             <span className="text-3xl leading-none">✓</span><span className="text-[11px] font-semibold">LIKE →</span>
           </div>
           <div className={`absolute bottom-4 left-1/2 flex -translate-x-1/2 flex-col items-center gap-1 rounded-2xl border px-4 py-2 shadow-xl backdrop-blur-md transition-all duration-150 ${drag.y > 35 && Math.abs(drag.y) > Math.abs(drag.x) ? 'scale-125 border-white bg-black text-white shadow-white/20' : 'border-white/45 bg-black/90 text-white/85'}`}>
-            <BookOpen aria-hidden="true" className="h-8 w-8" /><span className="text-[11px] font-semibold">↓ BINDER</span>
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8"><path d="M12 7.5c-2.5-2-5.5-2.5-9-2v13c3.5-.5 6.5 0 9 2 2.5-2 5.5-2.5 9-2v-13c-3.5-.5-6.5 0-9 2Z" /><path d="M12 7.5v13" /></svg><span className="text-[11px] font-semibold">↓ BINDER</span>
           </div>
         </div>
 
