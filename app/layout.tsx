@@ -153,10 +153,10 @@ export default async function RootLayout({
               <Image
               src="/Lost%20Binder%20Badge.png"
               alt="LostBinder"
-              width={44}
-              height={44}
+              width={72}
+              height={72}
               priority
-              className="h-10 w-10 object-contain"
+              className="h-16 w-16 object-contain"
             />
             </Link>
 
