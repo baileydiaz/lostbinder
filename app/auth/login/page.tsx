@@ -92,6 +92,8 @@ export default async function LoginPage({
 
       <p style={{ marginTop: '16px' }}><Link href="/auth/forgot-password">Forgot password?</Link></p>
 
+      <p style={{ marginTop: '12px' }}><Link href="/auth/resend-confirmation">Resend verification email</Link></p>
+
       <p style={{ marginTop: '20px' }}>
         Don&apos;t have an account?{' '}
         <Link href="/auth/sign-up">
