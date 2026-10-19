@@ -24,6 +24,11 @@ export const metadata: Metadata = {
   title: 'LostBinder',
   description:
     'Discover and collect Pokémon cards',
+  metadataBase: new URL('https://thelostbinder.com'),
+  icons: {
+    icon: [{ url: '/Navy%20Blue%20Logo%20(3).png', type: 'image/png' }],
+    apple: '/Navy%20Blue%20Logo%20(3).png',
+  },
 }
 
 export const viewport: Viewport = {
