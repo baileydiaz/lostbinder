@@ -26,8 +26,8 @@ export const metadata: Metadata = {
     'Discover and collect Pokémon cards',
   metadataBase: new URL('https://thelostbinder.com'),
   icons: {
-    icon: [{ url: '/Lost%20Binder%20Badge.png', type: 'image/png' }],
-    apple: '/Lost%20Binder%20Badge.png',
+    icon: [{ url: '/lostbinder-transparent.png', type: 'image/png' }],
+    apple: '/lostbinder-transparent.png',
   },
 }
 
@@ -151,12 +151,12 @@ export default async function RootLayout({
               className="shrink-0"
             >
               <Image
-              src="/Lost%20Binder%20Badge.png"
+              src="/lostbinder-transparent.png"
               alt="LostBinder"
-              width={72}
-              height={72}
+              width={100}
+              height={100}
               priority
-              className="h-16 w-16 object-contain"
+              className="h-20 w-20 object-contain"
             />
             </Link>
 
