@@ -65,19 +65,13 @@ export default function MobileNav({
             aria-label="LostBinder home"
             className="shrink-0"
           >
-            {/* Temporary text logo */}
-            <span className="text-[21px] font-bold tracking-[-0.04em] text-white">
-              LostBinder
-            </span>
-
-            {/* Image logo kept here for when it is ready */}
             <Image
-              src="/the-lost-binder-logo.png"
-              alt="The Lost Binder"
-              width={354}
-              height={219}
+              src="/lostbinder-logo.png"
+              alt="LostBinder"
+              width={36}
+              height={52}
               priority
-              className="hidden"
+              className="h-10 w-auto object-contain"
             />
           </Link>
 
