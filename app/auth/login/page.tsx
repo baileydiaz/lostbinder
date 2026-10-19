@@ -90,6 +90,8 @@ export default async function LoginPage({
         </button>
       </form>
 
+      <p style={{ marginTop: '16px' }}><Link href="/auth/forgot-password">Forgot password?</Link></p>
+
       <p style={{ marginTop: '20px' }}>
         Don&apos;t have an account?{' '}
         <Link href="/auth/sign-up">
