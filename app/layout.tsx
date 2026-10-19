@@ -145,20 +145,14 @@ export default async function RootLayout({
               aria-label="LostBinder home"
               className="shrink-0"
             >
-              {/* Temporary text logo */}
-              <span className="text-[22px] font-bold tracking-[-0.04em] text-white">
-                LostBinder
-              </span>
-
-              {/* Image logo kept here for when it is ready */}
               <Image
-                src="/the-lost-binder-logo.png"
-                alt="The Lost Binder"
-                width={354}
-                height={219}
-                priority
-                className="hidden"
-              />
+              src="/lostbinder-logo.png"
+              alt="LostBinder"
+              width={36}
+              height={52}
+              priority
+              className="h-10 w-auto object-contain"
+            />
             </Link>
 
             <div className="flex items-center gap-5">
