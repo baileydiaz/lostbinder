@@ -66,7 +66,7 @@ export default function MobileNav({
             className="shrink-0"
           >
             <Image
-              src="/lostbinder-brand.png"
+              src="/Lost%20Binder%20Badge.png"
               alt="LostBinder"
               width={36}
               height={52}
