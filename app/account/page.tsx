@@ -1,3 +1,4 @@
+import { changePassword, requestAccountDeletion } from './security-actions'
 import { changeUsername } from './actions'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
@@ -70,6 +71,9 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
             <p className="mt-2 text-sm text-zinc-300">{user.email}</p>
           </div>
 
+          <section className="mt-8 border-t border-white/10 pt-8"><h2 className="text-lg font-semibold">Change password</h2><form action={changePassword} className="mt-4 flex flex-col gap-3"><input name="current" type="password" required placeholder="Current password" autoComplete="current-password" className="rounded-lg border border-white/20 bg-black p-3" /><input name="next" type="password" minLength={12} required placeholder="New password (12+ characters)" autoComplete="new-password" className="rounded-lg border border-white/20 bg-black p-3" /><input name="confirm" type="password" minLength={12} required placeholder="Confirm new password" autoComplete="new-password" className="rounded-lg border border-white/20 bg-black p-3" /><button className="self-start rounded-lg bg-white px-5 py-3 font-medium text-black">Change password</button></form></section>
+          {profile?.username && <Link className="mt-6 inline-block text-zinc-300 underline" href={`/u/${profile.username}`}>View public profile</Link>}
+          <section className="mt-8 border-t border-red-900/50 pt-8"><h2 className="text-lg font-semibold text-red-400">Delete account</h2><p className="mt-2 text-sm text-zinc-400">Deletion is temporarily unavailable while we verify safe removal of your account data.</p><form action={requestAccountDeletion} className="mt-4 flex gap-3"><input name="confirmation" placeholder="Type DELETE" aria-label="Type DELETE to confirm" className="min-w-0 rounded-lg border border-white/20 bg-black p-3" /><button className="rounded-lg border border-red-500/50 px-4 py-3 text-red-400">Request deletion</button></form></section>
           <form action="/auth/signout" method="post" className="mt-8 border-t border-white/10 pt-8">
             <button type="submit" className="rounded-full border border-white/15 px-5 py-2.5 text-sm font-medium text-zinc-300 transition hover:border-white/40 hover:text-white">
               Log out
