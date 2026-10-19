@@ -146,7 +146,7 @@ export default async function RootLayout({
               className="shrink-0"
             >
               <Image
-              src="/lostbinder-logo.png"
+              src="/Navy%20Blue%20Logo%20(3).png"
               alt="LostBinder"
               width={36}
               height={52}
