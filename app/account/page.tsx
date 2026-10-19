@@ -1,8 +1,10 @@
+import { changeUsername } from './actions'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 
-export default async function AccountPage() {
+export default async function AccountPage({ searchParams }: { searchParams: Promise<{ error?: string; success?: string }> }) {
+  const params = await searchParams
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -28,6 +30,8 @@ export default async function AccountPage() {
         <p className="text-xs font-semibold uppercase tracking-[0.28em] text-zinc-600">LostBinder</p>
         <h1 className="mt-2 text-4xl font-semibold tracking-tight sm:text-5xl">Account</h1>
 
+        {params.error && <p role="alert" className="mt-5 text-red-400">{params.error}</p>}
+        {params.success && <p className="mt-5 text-green-400">{params.success}</p>}
         <div className="mt-10 rounded-3xl border border-white/10 bg-zinc-950 p-6 sm:p-8">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-zinc-600">Username</p>
@@ -36,6 +40,10 @@ export default async function AccountPage() {
             </p>
           </div>
 
+          <form action={changeUsername} className="mt-5 flex flex-wrap gap-3">
+            <input name="username" defaultValue={profile?.username ?? ''} required minLength={3} maxLength={30} pattern="[A-Za-z0-9_]+" aria-label="Username" className="rounded-lg border border-white/20 bg-black p-3 text-white" />
+            <button className="rounded-lg bg-white px-5 py-3 font-medium text-black">Save username</button>
+          </form>
           <div className="mt-8 border-t border-white/10 pt-8">
             <p className="text-xs font-semibold uppercase tracking-wider text-zinc-600">Shared cards</p>
             <Link
