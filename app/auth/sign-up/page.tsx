@@ -102,7 +102,7 @@ export default async function SignUpPage({
           name="password"
           type="password"
           placeholder="Password"
-          minLength={6}
+          minLength={12}
           required
           style={{
             padding: '12px',
@@ -137,7 +137,7 @@ export default async function SignUpPage({
           marginTop: '24px',
         }}
       >
-        Already have an account?{' '}
+        Need another verification email? <Link href="/auth/resend-confirmation">Resend confirmation</Link><br />Already have an account?{' '}
         <Link href="/auth/login">
           Log in
         </Link>

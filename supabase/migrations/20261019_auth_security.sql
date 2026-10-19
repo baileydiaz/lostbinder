@@ -1,0 +1,3 @@
+-- Existing profiles policies already provide public SELECT and owner-only UPDATE.
+-- Existing database already has a case-insensitive unique username index.
+-- No schema changes needed for profiles. Inspect other user-owned tables separately.

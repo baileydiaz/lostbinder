@@ -1,0 +1,2 @@
+-- Existing database already has profiles_username_lower_unique; no new index needed.
+-- Intentionally no-op.

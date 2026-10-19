@@ -58,9 +58,9 @@ export async function signup(
     )
   }
 
-  if (password.length < 6) {
+  if (password.length < 12) {
     redirect(
-      '/auth/sign-up?error=Password must be at least 6 characters'
+      '/auth/sign-up?error=Password must be at least 12 characters'
     )
   }
 

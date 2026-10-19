@@ -1,8 +1,11 @@
+import { changePassword, requestAccountDeletion } from './security-actions'
+import { changeUsername } from './actions'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 
-export default async function AccountPage() {
+export default async function AccountPage({ searchParams }: { searchParams: Promise<{ error?: string; success?: string }> }) {
+  const params = await searchParams
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -28,6 +31,8 @@ export default async function AccountPage() {
         <p className="text-xs font-semibold uppercase tracking-[0.28em] text-zinc-600">LostBinder</p>
         <h1 className="mt-2 text-4xl font-semibold tracking-tight sm:text-5xl">Account</h1>
 
+        {params.error && <p role="alert" className="mt-5 text-red-400">{params.error}</p>}
+        {params.success && <p className="mt-5 text-green-400">{params.success}</p>}
         <div className="mt-10 rounded-3xl border border-white/10 bg-zinc-950 p-6 sm:p-8">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-zinc-600">Username</p>
@@ -36,6 +41,10 @@ export default async function AccountPage() {
             </p>
           </div>
 
+          <form action={changeUsername} className="mt-5 flex flex-wrap gap-3">
+            <input name="username" defaultValue={profile?.username ?? ''} required minLength={3} maxLength={30} pattern="[A-Za-z0-9_]+" aria-label="Username" className="rounded-lg border border-white/20 bg-black p-3 text-white" />
+            <button className="rounded-lg bg-white px-5 py-3 font-medium text-black">Save username</button>
+          </form>
           <div className="mt-8 border-t border-white/10 pt-8">
             <p className="text-xs font-semibold uppercase tracking-wider text-zinc-600">Shared cards</p>
             <Link
@@ -62,6 +71,9 @@ export default async function AccountPage() {
             <p className="mt-2 text-sm text-zinc-300">{user.email}</p>
           </div>
 
+          <section className="mt-8 border-t border-white/10 pt-8"><h2 className="text-lg font-semibold">Change password</h2><form action={changePassword} className="mt-4 flex flex-col gap-3"><input name="current" type="password" required placeholder="Current password" autoComplete="current-password" className="rounded-lg border border-white/20 bg-black p-3" /><input name="next" type="password" minLength={12} required placeholder="New password (12+ characters)" autoComplete="new-password" className="rounded-lg border border-white/20 bg-black p-3" /><input name="confirm" type="password" minLength={12} required placeholder="Confirm new password" autoComplete="new-password" className="rounded-lg border border-white/20 bg-black p-3" /><button className="self-start rounded-lg bg-white px-5 py-3 font-medium text-black">Change password</button></form></section>
+          {profile?.username && <Link className="mt-6 inline-block text-zinc-300 underline" href={`/u/${profile.username}`}>View public profile</Link>}
+          <section className="mt-8 border-t border-red-900/50 pt-8"><h2 className="text-lg font-semibold text-red-400">Delete account permanently</h2><p className="mt-2 text-sm text-zinc-400">This permanently deletes your profile, binders, favorites, reactions, friendships and other account data. This cannot be undone. Password-based accounts only.</p><form action={requestAccountDeletion} className="mt-4 flex flex-col gap-3"><input name="password" type="password" required autoComplete="current-password" placeholder="Current password" aria-label="Current password for deletion" className="rounded-lg border border-white/20 bg-black p-3" /><input name="confirmation" required pattern="DELETE" placeholder="Type DELETE" aria-label="Type DELETE to confirm" className="rounded-lg border border-white/20 bg-black p-3" /><button className="self-start rounded-lg border border-red-500/50 px-4 py-3 text-red-400">Permanently delete my account</button></form></section>
           <form action="/auth/signout" method="post" className="mt-8 border-t border-white/10 pt-8">
             <button type="submit" className="rounded-full border border-white/15 px-5 py-2.5 text-sm font-medium text-zinc-300 transition hover:border-white/40 hover:text-white">
               Log out

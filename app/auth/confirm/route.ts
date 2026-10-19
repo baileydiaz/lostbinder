@@ -21,7 +21,8 @@ export async function GET(request: NextRequest) {
   const redirectTo =
     request.nextUrl.clone()
 
-  redirectTo.pathname = '/account'
+  const next = searchParams.get('next')
+  redirectTo.pathname = next === '/auth/reset-password' && type === 'recovery' ? next : '/account'
 
   redirectTo.searchParams.delete(
     'token_hash'
@@ -30,6 +31,7 @@ export async function GET(request: NextRequest) {
   redirectTo.searchParams.delete(
     'type'
   )
+  redirectTo.searchParams.delete('next')
 
   if (tokenHash && type) {
     const supabase = await createClient()
